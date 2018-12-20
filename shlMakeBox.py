@@ -13,6 +13,9 @@ from scriptcontext import doc
 
 import itertools
 
+import shl_toolbox_lib_dev.layers as wla
+reload(wla)
+
 #verify utility of this...
 T_IBOX = 5.5
 T_OBOX = 2
@@ -49,6 +52,10 @@ def setGlobals():
 	#key locations
 	ORIGIN_IB = [0,0,0]
 	ORIGIN_OB = [0,100,0]
+	
+	global LCUT_NAMES
+	lcut_inds = wla.get_lcut_layers()
+	LCUT_NAMES = wla.ind_to_name(lcut_inds)
 
 
 #GENERAL UTILITIES
@@ -143,7 +150,7 @@ def add_tickmarks(rect,len,offset):
 	rs.DeleteObjects([t_0,t_1,t_2])
 	tick_2 = rs.MirrorObject(tick,mirror_v[0],mirror_v[1],True)
 	ticks_3 = rs.MirrorObjects([tick,tick_2],mirror_h[0],mirror_h[1],True)
-	rs.ObjectLayer([tick,tick_2]+ticks_3,"XXX_LCUT_03-LSCORE")
+	rs.ObjectLayer([tick,tick_2]+ticks_3,LCUT_NAMES[3])
 
 
 #make grips and return information for placing them
@@ -193,7 +200,7 @@ def add_logo(pt_base,W,H):
 	str_scale = str(scale_factor)
 	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
 	logo = rs.LastCreatedObjects()
-	rs.ObjectLayer(logo,"XXX_LCUT_04-ENGRAVE")
+	rs.ObjectLayer(logo,LCUT_NAMES[4])
 
 
 #deprecated
@@ -212,7 +219,7 @@ def add_logo_offcenter(pt_base,W,H):
 	#rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " _Enter _Enter", 0)
 	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
 	logo = rs.LastCreatedObjects()
-	rs.ObjectLayer(logo,"XXX_LCUT_04-ENGRAVE")
+	rs.ObjectLayer(logo,LCUT_NAMES[4])
 
 
 #box functions
@@ -249,10 +256,10 @@ def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE, BOOL_RABET):
 		grips = add_grips(top,grip_data,desired_grip_gap)
 	else:
 		grips = add_grips(top,grip_data,bb_dims[1]/20)
-	rs.ObjectLayer(grips,"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(grips,LCUT_NAMES[1])
 
 	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
-	rs.ObjectLayer(all_geo,"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(all_geo,LCUT_NAMES[1])
 
 	br = rs.BoundingBox(all_geo)[:4]
 
@@ -296,7 +303,7 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	else:
 		grips = add_grips(top,grip_data,bb_dims[1]/20)
 
-	rs.ObjectLayer(grips,"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(grips,LCUT_NAMES[1])
 
 	#turn sides into finger joins
 	sides_b = rs.ExplodeCurves(bottom)
@@ -319,7 +326,7 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 
 	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
 
-	rs.ObjectLayer(sb+ss+sl+[top],"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
 	rs.CopyObjects(ss,[0,H+LCUT_GAP,0])
 	rs.CopyObjects(sl,[0,H+LCUT_GAP,0])
 
@@ -341,10 +348,8 @@ def rc_shl_box():
 
 	opt_inner = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
 	opt_outer = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
-	# opt_rabet = Rhino.Input.Custom.OptionToggle(True,"Off","On")
 
 	go.SetCommandPrompt("Select breps to be boxed or press Enter for manual dimensioning")
-	# go.AddOptionToggle("RabetInnerBox", opt_rabet)
 	go.AddOptionDouble("InnerThickness", opt_inner)
 	go.AddOptionDouble("OuterThickness", opt_outer)
 
@@ -382,7 +387,6 @@ def rc_shl_box():
 			continue
 		
 		break
-
 	
 	#set globals according to input
 	BOOL_RABET = False
@@ -391,15 +395,6 @@ def rc_shl_box():
 	if BOOL_RABET == False:
 		global TOL_RABET
 		TOL_RABET = 0
-	
-	l_index_cut = add_layer("XXX_LCUT_01-CUT",sd.Color.Red)
-	l_index_score = add_layer("XXX_LCUT_02-SCORE",sd.Color.Blue)
-	l_index_lscore = add_layer("XXX_LCUT_03-LSCORE",sd.Color.Lime)
-	l_index_engrave = add_layer("XXX_LCUT_04-ENGRAVE",sd.Color.Magenta)
-	doc.Layers[l_index_cut].Color = sd.Color.Red
-	doc.Layers[l_index_score].Color = sd.Color.Blue
-	doc.Layers[l_index_lscore].Color = sd.Color.Lime
-	doc.Layers[l_index_engrave].Color = sd.Color.Magenta
 	
 	if MANUAL == False:
 		#Get geometry and object lists
