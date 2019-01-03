@@ -233,8 +233,7 @@ def rc_plot_volumes(use_epsilon):
 
 	select_items = []
 	for i,brep in enumerate(new_brep_list):
-		#get lowest curve info
-
+		
 		#get label prefix and bounding dims for this brep
 		bdims = wge.get_bounding_dims(brep)
 		baseplane = rs.MovePlane(rs.WorldXYPlane(),[xbase,ybase,0])
@@ -247,15 +246,16 @@ def rc_plot_volumes(use_epsilon):
 		cuts_at = [epsilon] if use_epsilon else [0]
 		brep_label = label_letter
 		section_labels = [label_letter]
-
+		
 		num_sections, remaining_thickness, cuts_at = get_section_division(bdims.Z,THICKNESS)
 		if use_epsilon: cuts_at[0] = epsilon
 		brep_label = label_letter + " r: " + str(round(remaining_thickness,2))
 		section_labels = [label_prefix+str(i) for i in xrange(len(cuts_at))]
-
+		
 		#get section information for each cut
 		section_planes = get_brep_section_planes(brep, cuts_at)
-
+		
+		#get lowest curve info
 		section_curves, section_dims = [[],[]]
 		for i,plane in enumerate(section_planes):
 			curve,dims = [0,0]
@@ -265,10 +265,10 @@ def rc_plot_volumes(use_epsilon):
 				curve, dims = get_section_curve_info_multi_no_ortho(brep,plane)
 			section_curves.append(curve)
 			section_dims.append(dims)
-
+		
 		##DO WORK HERE##
 		drawing_planes = get_drawing_planes(section_dims,baseplane,GAP_SIZE)
-
+		
 		#place curves in drawing location
 		for sp, dp, sc in zip(section_planes, drawing_planes, section_curves):
 			t = Rhino.Geometry.Transform.ChangeBasis(dp,sp)

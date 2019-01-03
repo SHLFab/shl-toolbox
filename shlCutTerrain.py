@@ -13,11 +13,25 @@ reload(wrh)
 import shl_toolbox_lib_dev.geo as wge
 reload(wge)
 
+
+"""
+KNOWN ISSUES TO FIX:
+1. Use of a small epsilon to get the first section through the terrain.
+instead, use a projection of the surface to get the outline
+2. Use of a downward extrusion for the building sections.
+Two possible consequences:
+	- This might be fine for all sections except for the bottom one, which should be a projection of the footprint
+	- This might not be fine at all... verify with different geometry.
+3. (FORESEEN): overkill for "next terrain outline"...
+"""
+
 def set_globals():
 	global D_TOL, A_TOL
-	
 	D_TOL = doc.ActiveDoc.ModelAbsoluteTolerance
 	A_TOL = doc.ActiveDoc.ModelAngleToleranceDegrees
+	
+	global LASER_GAP
+	LASER_GAP = 4
 
 
 def get_section_division(height,thickness):
@@ -78,6 +92,34 @@ def get_frame_brep(outline_srf,thickness):
 	rs.DeleteObjects([outline_crv,inner_crv])
 	return frame_brep
 
+
+def get_lowest_curve_info(brep, h_tol):
+	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
+	bdims = wge.get_bounding_dims(brep)
+	brep_faces = wge.get_extreme_srf(brep, h_tol,False)
+
+	crvs_by_brep = []
+
+	for f in brep_faces:
+		crvs = []
+		inds = f.AdjacentEdges()
+		for i in inds:
+			k = brep.Edges
+			crvs.append(brep.Edges[i])
+		crvs = Rhino.Geometry.Curve.JoinCurves(crvs,D_TOL)
+	crvs_by_brep.append(crvs)
+
+	crvs_by_brep = crvs_by_brep[0] #to fix this later. only deals w one brep for now
+	list_curves = []
+	for pc in crvs_by_brep:
+		if pc.GetType() != Rhino.Geometry.PolyCurve:
+			pc = wru.polylinecurve_to_polycurve(pc)
+
+		wge.make_pcurve_ccw(pc)
+		list_curves.append(pc)
+
+	return [list_curves,bdims]
+
 #def get_top_curve_info(brep):
 #	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
 #	h_tol = 3
@@ -106,6 +148,76 @@ def get_frame_brep(outline_srf,thickness):
 #
 #	return list_curves
 
+def get_breps_on_layer(layername):
+	buildings = rs.ObjectsByLayer(layername)
+	breps = []
+	for b in buildings:
+		if rs.ObjectType(b) == 16 or rs.ObjectType(b) == 1073741824: breps.append(b)
+	return breps
+
+def get_curves_on_layer(layername):
+	objs = rs.ObjectsByLayer(layername)
+	crvs = []
+	for o in objs:
+		if rs.ObjectType(o) == 4: crvs.append(o)
+	return crvs
+
+#CURRENTLY WORKING ON THIS LAYER
+def get_building_booleans(building_breps,planes):
+	
+	bldg_intersection_boolean_breps = []
+	bldg_intersection_breps = []
+	for i,plane in enumerate(planes):
+		bldg_intersection_breps_level = []
+		boolean_breps_level = []
+		for b in building_breps:
+			plane_sections = get_section(rs.coercebrep(b),plane)
+			if not plane_sections: continue
+			
+			for s in plane_sections:
+				pb = Rhino.Geometry.Brep.CreatePlanarBreps(plane_sections) #creates a list of breps
+				pb = pb[0]
+				bldg_intersection_breps_level.append(pb)
+			for s in bldg_intersection_breps_level:
+				srf_added = wrh.add_brep_to_layer(s,LCUT_IND[4])
+				k = SHORT_GUIDE
+				b = rs.ExtrudeSurface(srf_added,SHORT_GUIDE)
+				rs.ObjectLayer(b,"s7")
+				rs.DeleteObject(srf_added)
+				boolean_breps_level.append(b)
+				
+		bldg_intersection_breps.append(bldg_intersection_breps_level) #don't even need this...
+		bldg_intersection_boolean_breps.append(boolean_breps_level)
+	#debug preview: change layer of the boolean breps.
+	return bldg_intersection_boolean_breps
+
+
+def cut_building_volumes(terrain_section_breps,bldg_section_breps):
+	"""
+	input: list of lists of extruded terrain breps and section breps.
+	first level of list is section heights, second level is breps.
+	output: the new terrain breps
+	"""
+	new_terrain_section_breps = []
+	for i,brep_level in enumerate(terrain_section_breps):
+		new_level_terrain_section_breps = []
+		for host_brep in brep_level:
+			sub_breps = bldg_section_breps[i]
+			boolean_result = rs.BooleanDifference([host_brep],sub_breps,False)
+			if boolean_result:
+				c = [rs.CopyObject(x) for x in boolean_result]
+				new_level_terrain_section_breps.extend(c)
+			else: new_level_terrain_section_breps.append(host_brep)
+		rs.DeleteObjects(sub_breps)
+		rs.DeleteObjects(boolean_result)
+		rs.ObjectLayer(new_level_terrain_section_breps,"s3")
+		new_terrain_section_breps.append(new_level_terrain_section_breps)
+	
+	return new_terrain_section_breps
+
+def project_etching(etch_layer,surfaces):
+	crvs = get_curves_on_layer(etch_layer)
+	return rs.ProjectCurveToSurface(crvs,surfaces,[0,0,-1])
 
 def rc_terraincut():
 	
@@ -164,8 +276,15 @@ def rc_terraincut():
 	LCUT_INDICES = wla.get_lcut_layers()
 	bool_inplace = opt_inplace.CurrentValue
 	
+	
+	#set guides
+	global SHORT_GUIDE, LONG_GUIDE
+	SHORT_GUIDE = rs.AddLine([0,0,0],[0,0,-THICKNESS])
+	LONG_GUIDE = rs.AddLine([0,0,0],[0,0,-THICKNESS*4])
+	
 	#set layers
-	lcut_ind = wla.get_lcut_layers()
+	global LCUT_IND
+	LCUT_IND = wla.get_lcut_layers()
 	
 	#get topography object
 	b_obj = go.Object(0).Object()
@@ -192,30 +311,41 @@ def rc_terraincut():
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
 	
-	
 	extruded_section_breps = []
 	boolean_section_breps = []
 	
-	short_guide = rs.AddLine([0,0,0],[0,0,-THICKNESS])
-	long_guide = rs.AddLine([0,0,0],[0,0,-THICKNESS*4])
-	
 	frame_base_surface = None
 	
+	#get extrusions of section srfs
 	for i,brep_level in enumerate(section_srfs):
 		extruded_breps = []
 		for brep in brep_level:
-			srf_added = wrh.add_brep_to_layer(brep,lcut_ind[1])
+			srf_added = wrh.add_brep_to_layer(brep,LCUT_IND[1])
 			if i == 0: frame_base_surface = rs.CopyObject(srf_added)
-			guide_crv = rs.AddLine([0,0,0],[0,0,-THICKNESS])
-			extruded_breps.append(rs.ExtrudeSurface(srf_added,short_guide))
+			extruded_breps.append(rs.ExtrudeSurface(srf_added,SHORT_GUIDE))
 			rs.DeleteObject(srf_added)
 		extruded_section_breps.append(extruded_breps)
+	
+	#MAKE VOIDS FOR EXISTING BUILDINGS
+	#Basic placeholder method for now.
+	building_breps = get_breps_on_layer("BUILDINGS") #TODO: replace with user-selections
+	
+	building_sections = []
+	
+	#get the boolean breps for the buildings
+	bldg_subtraction_breps = get_building_booleans(building_breps,planes)	
+	#TODO: build the bottom building brep from a projection or something... current method grabs whatever's at the requisite depth and extrudes...
+	#see note 2 at top of script... maybe this is okay.
+	
+	#do booleaning of building breps.
+	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
 #	make the frame brep
 	num_divisions = len(section_srfs)
 	frame_brep = get_frame_brep(frame_base_surface,THICKNESS*num_divisions)
 	
 	section_final_breps = []
+	
 	for i,brep_level in enumerate(extruded_section_breps):
 		boolean_level_ind = i+2
 		
@@ -229,8 +359,8 @@ def rc_terraincut():
 				final_brep = None
 				boolbreps = []
 				for child_brep in section_srfs[boolean_level_ind]:
-					boolbreps.append(rs.ExtrudeSurface(child_brep,long_guide))
-				rs.ObjectLayer(boolbreps,"XXX_LCUT_03-LSCORE")
+					boolbreps.append(rs.ExtrudeSurface(child_brep,LONG_GUIDE))
+				rs.ObjectLayer(boolbreps,"s6")
 				
 				#prepare: get a frame brep for filling in edges of the brep.
 				frame_instance = rs.CopyObject(frame_brep,[0,0,i*THICKNESS])
@@ -238,8 +368,9 @@ def rc_terraincut():
 				#boolean: crop out the portion that will be used for filling in.
 				frame_intersection = rs.BooleanIntersection(frame_instance,host_brep,False)
 				if len(frame_intersection) != 0:
-					preview_intersection = rs.CopyObject(frame_intersection)
-					rs.ObjectLayer(preview_intersection,"XXX_LCUT_04-ENGRAVE")
+					pass
+#					preview_intersection = rs.CopyObject(frame_intersection)
+#					rs.ObjectLayer(preview_intersection,"XXX_LCUT_04-ENGRAVE")
 				
 				#boolean: hollow out the host.
 				boolean_result = rs.BooleanDifference([host_brep],boolbreps,False)
@@ -261,7 +392,7 @@ def rc_terraincut():
 					rc_b.MergeCoplanarFaces(D_TOL)
 					merged_brep = doc.Objects.Add(rc_b)
 					rs.DeleteObject(framed_brep)
-					rs.ObjectLayer(merged_brep,"XXX_LCUT_02-SCORE")
+					rs.ObjectLayer(merged_brep,"s5")
 					
 					#if the result of the boolean operations is different from the original slice brep,
 					#use it as the final brep. otherwise use the host brep.
@@ -288,10 +419,65 @@ def rc_terraincut():
 		for brep in breplevel:
 			xsrf = wge.get_extreme_srf(rs.coercebrep(brep),5)
 			final_srfs_level.append(doc.Objects.Add(xsrf[0].DuplicateFace(False))) #must properly type the faces
-		rs.ObjectLayer(final_srfs_level,"XXX_LCUT_03-LSCORE")
+		rs.ObjectLayer(final_srfs_level,"s4")
 		final_srfs.append(final_srfs_level)
 	
 	rs.DeleteObject(frame_brep)
+	
+	#project etching layers to final srfs
+
+	
+	final_srfs.reverse()
+	
+	#get the boundary curves
+	main_curves = []
+	guide_curves = []
+	etch_curves = []
+	for i, srflevel in enumerate(final_srfs):
+		main_curves_level = []
+		guide_curves_level = []
+		etch_curves_level = []
+		
+		for srf in srflevel:
+			sb = rs.DuplicateSurfaceBorder(srf)
+			sb_outer = rs.DuplicateSurfaceBorder(srf,1)
+			if sb:
+				main_curves_level.extend(sb)
+			if i< len(final_srfs)-1 and sb_outer:
+					p = rs.ProjectCurveToSurface(sb_outer, final_srfs[i+1],[0,0,-1])
+					if p: guide_curves_level.extend(p)
+		etch_curves_level = project_etching("road",srflevel)
+		
+		etch_curves.append(etch_curves_level)
+		main_curves.append(main_curves_level)
+		guide_curves.append(guide_curves_level)
+	
+	flat_srf_list = [item for sublist in final_srfs for item in sublist]
+	etches = project_etching("road",flat_srf_list)
+	
+	etch_curves.reverse()
+	main_curves.reverse()
+	etch_curves.reverse()
+	
+	bb = rs.BoundingBox(main_curves[0])
+#	if bb:
+#		for i, point in enumerate(bb):
+#			rs.AddTextDot( i, point )
+	
+	layout_dist = rs.Distance(bb[0],bb[3]) + LASER_GAP
+	
+	movement_range = wut.frange(0,(len(main_curves)-1)*layout_dist,layout_dist)
+	
+#	for 
+#	rs.MoveObjects(
+	
+	
+	main_curves = [item for sublist in main_curves for item in sublist]
+	guide_curves = [item for sublist in guide_curves for item in sublist]
+	etch_curves = [item for sublist in etch_curves for item in sublist]
+	rs.ObjectLayer(main_curves,"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
+	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
 	
 	return 0
 	
