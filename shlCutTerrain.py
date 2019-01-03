@@ -120,33 +120,6 @@ def get_lowest_curve_info(brep, h_tol):
 
 	return [list_curves,bdims]
 
-#def get_top_curve_info(brep):
-#	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
-#	h_tol = 3
-#	bdims = wge.get_bounding_dims(brep)
-#	brep_faces = wge.get_extreme_srf(brep, h_tol)
-#
-#	crvs_by_brep = []
-#
-#	for f in brep_faces:
-#		crvs = []
-#		inds = f.AdjacentEdges()
-#		for i in inds:
-#			k = brep.Edges
-#			crvs.append(brep.Edges[i])
-#		crvs = Rhino.Geometry.Curve.JoinCurves(crvs,D_TOL)
-#	crvs_by_brep.append(crvs)
-#
-#	crvs_by_brep = crvs_by_brep[0] #to fix this later. only deals w one brep for now
-#	list_curves = []
-#	for pc in crvs_by_brep:
-#		if pc.GetType() != Rhino.Geometry.PolyCurve:
-#			pc = wru.polylinecurve_to_polycurve(pc)
-#
-#		wge.make_pcurve_ccw(pc)
-#		list_curves.append(pc)
-#
-#	return list_curves
 
 def get_breps_on_layer(layername):
 	buildings = rs.ObjectsByLayer(layername)
@@ -155,12 +128,14 @@ def get_breps_on_layer(layername):
 		if rs.ObjectType(b) == 16 or rs.ObjectType(b) == 1073741824: breps.append(b)
 	return breps
 
+
 def get_curves_on_layer(layername):
 	objs = rs.ObjectsByLayer(layername)
 	crvs = []
 	for o in objs:
 		if rs.ObjectType(o) == 4: crvs.append(o)
 	return crvs
+
 
 #CURRENTLY WORKING ON THIS LAYER
 def get_building_booleans(building_breps,planes):
@@ -215,9 +190,81 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	
 	return new_terrain_section_breps
 
+
 def project_etching(etch_layer,surfaces):
 	crvs = get_curves_on_layer(etch_layer)
 	return rs.ProjectCurveToSurface(crvs,surfaces,[0,0,-1])
+
+
+def trim_etching(etch_crvs,boundary_crvs):
+	closed_boundary_crvs = []
+#	bb = rs.BoundingBox(etch_crvs.extend(boundary_crvs))
+	
+	#close the boundary curves
+	for c in boundary_crvs:
+		if not rs.IsCurveClosed(c):
+			if rs.IsCurveClosable(c):
+				crv = rs.CopyObject(c)
+				closed_boundary_crvs.append(rs.CopyObject(crv))
+				continue
+		closed_boundary_crvs.append(rs.CopyObject(c))
+	
+	#split all etch curves by the boundary curves
+	split_crvs = []
+	for c in closed_boundary_crvs:
+		for e in etch_crvs:
+			intersection_list = rs.CurveCurveIntersection(e,c,D_TOL)
+			if intersection_list is None:
+				continue
+				pass
+			else:
+				param_list = [x[5] for x in intersection_list if x[0] == 1] #if pt intersection type; get param on etch curve
+				ce = rs.CopyObject(e)
+				split_crvs.extend(rs.SplitCurve(ce,param_list,True))
+	
+	no_int_curves = []
+	for e in etch_crvs:
+		cancel = False
+		for c in closed_boundary_crvs:
+			intersection_list = rs.CurveCurveIntersection(e,c,D_TOL)
+			if intersection_list:
+				cancel = True
+				break
+		if cancel: continue
+		no_int_curves.append(rs.CopyObject(e))
+	
+	rs.ObjectLayer(no_int_curves,"XXX_LCUT_02-SCORE")
+	rs.ObjectLayer(split_crvs,"XXX_LCUT_02-SCORE")
+	
+	#get volumes
+	srfs = rs.AddPlanarSrf(closed_boundary_crvs)
+	line=rs.AddLine([0,0,-5],[0,0,5]) #replace with a real line determined by the bounding box
+	rs.MoveObjects(srfs,[0,0,-5])
+	vols = []
+	for srf in srfs:
+		ext=rs.ExtrudeSurface(srf,line,True)
+		if ext != None: vols.append(ext)
+	rs.DeleteObjects(srfs)
+	rs.DeleteObject(line)
+	
+	
+	#build volumes
+	split_crvs.extend(no_int_curves)
+	interior_crvs = [x for x in split_crvs if not wge.multi_test_in_or_out(x,vols)]
+	interior_crvs = [rs.CopyObject(x) for x in interior_crvs]
+	
+#	interior_crvs = [rs.CopyObject(x) for x in split_crvs]
+	rs.DeleteObjects(split_crvs)
+	rs.DeleteObjects(etch_crvs)
+	rs.DeleteObjects(closed_boundary_crvs)
+	rs.DeleteObjects(vols)
+	
+	return interior_crvs
+	
+	#remove the split etch curves with midpoints contained inside boundary curves
+	#for all curves,
+	#1. test for midpoint containment using wge.multi_test_in_or_out()
+	#2. delete if midpoint containment true
 
 def rc_terraincut():
 	
@@ -382,7 +429,7 @@ def rc_terraincut():
 					
 					boolean_result = boolean_result[0]
 					if len(frame_intersection) !=0:
-						framed_brep = rs.BooleanUnion([boolean_result,frame_intersection],True)
+						framed_brep = rs.BooleanUnion([boolean_result,frame_intersection],True) #this fails occasionally
 						framed_brep = framed_brep[0]
 					else:
 						framed_brep = boolean_result
@@ -424,9 +471,7 @@ def rc_terraincut():
 	
 	rs.DeleteObject(frame_brep)
 	
-	#project etching layers to final srfs
-
-	
+	#project etching layers to final srfs	
 	final_srfs.reverse()
 	
 	#get the boundary curves
@@ -457,7 +502,7 @@ def rc_terraincut():
 	
 	etch_curves.reverse()
 	main_curves.reverse()
-	etch_curves.reverse()
+	guide_curves.reverse()
 	
 	bb = rs.BoundingBox(main_curves[0])
 #	if bb:
@@ -465,20 +510,33 @@ def rc_terraincut():
 #			rs.AddTextDot( i, point )
 	
 	layout_dist = rs.Distance(bb[0],bb[3]) + LASER_GAP
+	preview_dist = rs.Distance(bb[0],bb[1]) + LASER_GAP
+	movement_range = wut.frange(layout_dist,(len(main_curves))*layout_dist,layout_dist)
 	
-	movement_range = wut.frange(0,(len(main_curves)-1)*layout_dist,layout_dist)
-	
-#	for 
-#	rs.MoveObjects(
-	
+	for i,level_list in enumerate(main_curves):
+		cp_main = rs.CurvePlane(level_list[0])
+		rs.MoveObjects(level_list,[0,movement_range[i],-cp_main.OriginZ])
+		
+		if etch_curves[i]:
+			rs.MoveObjects(etch_curves[i],[0,movement_range[i],-cp_main.OriginZ])
+		
+		if i>0:
+			cp_guide = rs.CurvePlane(guide_curves[i][0])
+			rs.MoveObjects(guide_curves[i],[0,movement_range[i-1],-cp_guide.OriginZ])
+		
 	
 	main_curves = [item for sublist in main_curves for item in sublist]
 	guide_curves = [item for sublist in guide_curves for item in sublist]
 	etch_curves = [item for sublist in etch_curves for item in sublist]
+	
+	preview_geo = [item for sublist in final_srfs for item in sublist]
+	rs.MoveObjects(preview_geo,[preview_dist,0,0])
+	
+	etch_curves = trim_etching(etch_curves,guide_curves)
 	rs.ObjectLayer(main_curves,"XXX_LCUT_01-CUT")
 	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
 	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
-	
+	rs.ObjectLayer(preview_geo,"XXX_LCUT_00-GUIDES")
 	return 0
 	
 if __name__ == "__main__":
