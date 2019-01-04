@@ -196,76 +196,6 @@ def project_etching(etch_layer,surfaces):
 	return rs.ProjectCurveToSurface(crvs,surfaces,[0,0,-1])
 
 
-def trim_etching(etch_crvs,boundary_crvs):
-	closed_boundary_crvs = []
-#	bb = rs.BoundingBox(etch_crvs.extend(boundary_crvs))
-	
-	#close the boundary curves
-	for c in boundary_crvs:
-		if not rs.IsCurveClosed(c):
-			if rs.IsCurveClosable(c):
-				crv = rs.CopyObject(c)
-				closed_boundary_crvs.append(rs.CopyObject(crv))
-				continue
-		closed_boundary_crvs.append(rs.CopyObject(c))
-	
-	#split all etch curves by the boundary curves
-	split_crvs = []
-	for c in closed_boundary_crvs:
-		for e in etch_crvs:
-			intersection_list = rs.CurveCurveIntersection(e,c,D_TOL)
-			if intersection_list is None:
-				continue
-				pass
-			else:
-				param_list = [x[5] for x in intersection_list if x[0] == 1] #if pt intersection type; get param on etch curve
-				ce = rs.CopyObject(e)
-				split_crvs.extend(rs.SplitCurve(ce,param_list,True))
-	
-	no_int_curves = []
-	for e in etch_crvs:
-		cancel = False
-		for c in closed_boundary_crvs:
-			intersection_list = rs.CurveCurveIntersection(e,c,D_TOL)
-			if intersection_list:
-				cancel = True
-				break
-		if cancel: continue
-		no_int_curves.append(rs.CopyObject(e))
-	
-	rs.ObjectLayer(no_int_curves,"XXX_LCUT_02-SCORE")
-	rs.ObjectLayer(split_crvs,"XXX_LCUT_02-SCORE")
-	
-	#get volumes
-	srfs = rs.AddPlanarSrf(closed_boundary_crvs)
-	line=rs.AddLine([0,0,-5],[0,0,5]) #replace with a real line determined by the bounding box
-	rs.MoveObjects(srfs,[0,0,-5])
-	vols = []
-	for srf in srfs:
-		ext=rs.ExtrudeSurface(srf,line,True)
-		if ext != None: vols.append(ext)
-	rs.DeleteObjects(srfs)
-	rs.DeleteObject(line)
-	
-	
-	#build volumes
-	split_crvs.extend(no_int_curves)
-	interior_crvs = [x for x in split_crvs if not wge.multi_test_in_or_out(x,vols)]
-	interior_crvs = [rs.CopyObject(x) for x in interior_crvs]
-	
-#	interior_crvs = [rs.CopyObject(x) for x in split_crvs]
-	rs.DeleteObjects(split_crvs)
-	rs.DeleteObjects(etch_crvs)
-	rs.DeleteObjects(closed_boundary_crvs)
-	rs.DeleteObjects(vols)
-	
-	return interior_crvs
-	
-	#remove the split etch curves with midpoints contained inside boundary curves
-	#for all curves,
-	#1. test for midpoint containment using wge.multi_test_in_or_out()
-	#2. delete if midpoint containment true
-
 def rc_terraincut():
 	
 	go = Rhino.Input.Custom.GetObject()
@@ -532,7 +462,18 @@ def rc_terraincut():
 	preview_geo = [item for sublist in final_srfs for item in sublist]
 	rs.MoveObjects(preview_geo,[preview_dist,0,0])
 	
-	etch_curves = trim_etching(etch_curves,guide_curves)
+	#close the boundary curves
+	cb_crvs = []
+	for c in guide_curves:
+		if not rs.IsCurveClosed(c):
+			if rs.IsCurveClosable(c,D_TOL):
+				cb_curves.append(rs.CloseCurve(rs.CopyObject(c)))
+		else:
+			cb_crvs.append(rs.CopyObject(c))
+	
+	etch_curves = wge.trim_boundary(etch_curves,cb_crvs,D_TOL)
+	rs.DeleteObjects(cb_crvs)
+	
 	rs.ObjectLayer(main_curves,"XXX_LCUT_01-CUT")
 	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
 	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
