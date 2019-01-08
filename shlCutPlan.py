@@ -160,19 +160,22 @@ def get_lowest_curve_info(brep, h_tol):
 	return [list_curves,bdims]
 
 
-def rc_plot_volumes(use_epsilon):
+def extrude_features(feature_crv):
+	
 
+def rc_plot_volumes(use_epsilon):
+	
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
+	
 	opt_thickness = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
 	opt_sections = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_inplace = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_heights = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
-
-	go.SetCommandPrompt("Select breps to extract plan cuts")
+	
+	go.SetCommandPrompt("Select floorplate layer to extract plan cuts")
 	go.AddOptionDouble("Thickness", opt_thickness)
-
+	
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.AcceptEnterWhenDone(True)
@@ -223,7 +226,12 @@ def rc_plot_volumes(use_epsilon):
 			new_brep_list.append(wru.extrusion_to_brep(geo))
 		else:
 			new_brep_list.append(geo)
-
+	
+	#TODO: boolean difference out the features:
+		#1. move them to the top of the bounding box
+		#2. extrude them down through the height of the bounding box
+		#3. boolean them out and carry on... treat the features as a group.
+	
 	#set base for output.
 	xbase = 0
 	ybase = 0
@@ -261,10 +269,15 @@ def rc_plot_volumes(use_epsilon):
 			curve,dims = [0,0]
 			if (not use_epsilon) and (i == 0):
 				curve, dims = get_lowest_curve_info(brep,D_TOL*2)
-			else:
+				section_curves.append(curve)
+				section_dims.append(dims)
+			elif (i == 0) :
 				curve, dims = get_section_curve_info_multi_no_ortho(brep,plane)
-			section_curves.append(curve)
-			section_dims.append(dims)
+				section_curves.append(curve)
+				section_dims.append(dims)
+			else:
+				pass
+			
 		
 		##DO WORK HERE##
 		drawing_planes = get_drawing_planes(section_dims,baseplane,GAP_SIZE)
