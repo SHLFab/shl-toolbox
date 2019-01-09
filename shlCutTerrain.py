@@ -1,6 +1,7 @@
 import rhinoscriptsyntax as rs
 import Rhino
 from scriptcontext import doc
+import System as sys
 
 import itertools
 
@@ -96,6 +97,7 @@ def get_frame_brep(outline_srf,border_thickness,thickness):
 def get_lowest_curve_info(brep, h_tol):
 	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
 	bdims = wge.get_bounding_dims(brep)
+	Rhino.Geometry.Brep.MergeCoplanarFaces(brep,D_TOL)
 	brep_faces = wge.get_extreme_srf(brep, h_tol,False)
 
 	crvs_by_brep = []
@@ -202,7 +204,7 @@ def rc_getinput():
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
 	
 	opt_thickness = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
-	opt_borderthickness = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
+	opt_borderthickness = Rhino.Input.Custom.OptionDouble(10,0.2,1000)
 	opt_sections = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_inplace = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	
@@ -219,7 +221,7 @@ def rc_getinput():
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.DeselectAllBeforePostSelect = False
-
+	
 	res = None
 	bHavePreselectedObjects = False
 
@@ -325,8 +327,6 @@ def rc_terraincut(b_obj):
 	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
 	section_final_breps = []
 	
-	
-	#brep construction
 	#brep construction
 	for i,brep_level in enumerate(extruded_section_breps):
 		boolean_level_ind = i+2
@@ -355,15 +355,21 @@ def rc_terraincut(b_obj):
 				
 				#boolean: hollow out the host.
 				boolean_result = rs.BooleanDifference([host_brep],boolbreps,False)
+				rs.ObjectLayer(boolean_result,"s8")
 				rs.DeleteObject(frame_instance)
 				rs.DeleteObjects(boolbreps)
 				
 				#if there was a boolean result, union it with the frame.
 				if len(boolean_result) == 1:
-					
 					boolean_result = boolean_result[0]
 					type = rs.ObjectType(boolean_result)
 					if len(frame_intersection) !=0:
+#						debug
+						k = rs.CopyObject(boolean_result)
+						j = rs.CopyObject(frame_intersection)
+						rs.ObjectLayer(k,"s9")
+						rs.ObjectLayer(j,"s10")
+#						debug
 						frame_union_items = [boolean_result]
 						frame_union_items.extend(frame_intersection)
 						framed_brep = rs.BooleanUnion(frame_union_items,True) #Watch this
@@ -371,11 +377,13 @@ def rc_terraincut(b_obj):
 					else:
 						framed_brep = boolean_result
 					
+					if framed_brep == sys.Guid("00000000-0000-0000-0000-000000000000"): framed_brep = boolean_result #additional error handling for BooleanUnion
 					#merge faces.
+					rs.ObjectLayer(framed_brep,"s1")
 					rc_b = rs.coercebrep(framed_brep)
-					rc_b.MergeCoplanarFaces(D_TOL) # This fails occasionally. why? (seems to have something to do with frame size... overlap?
+					rc_b.MergeCoplanarFaces(D_TOL) #This fails occasionally. why? (seems to have something to do with frame size... overlap? problem results from an all-zero guid)
 					merged_brep = doc.Objects.Add(rc_b)
-					rs.DeleteObject(framed_brep)
+#					rs.DeleteObject(framed_brep)
 					rs.ObjectLayer(merged_brep,"s5")
 					
 					#if the result of the boolean operations is different from the original slice brep,

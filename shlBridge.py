@@ -624,14 +624,14 @@ def rc_Bridge():
 #run commands.
 #deprecated but remain for debug.
 def rc_addBridges():
-
+	
 	#set getobject
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
 	go.GeometryAttributeFilter = Rhino.Input.Custom.GeometryAttributeFilter.ClosedCurve
 	go.SetCommandPrompt( 'Select Bridging' )
 	go.GetMultiple(1,0)
-
+	
 	#get the list of curve objects and curve geometries
 	crv_obj_list = []
 	crv_geo_list = []
@@ -639,12 +639,12 @@ def rc_addBridges():
 		c_obj = go.Object(i).Object()
 		crv_obj_list.append(c_obj)
 		crv_geo_list.append(c_obj.CurveGeometry)
-
+	
 	segment_count = 0
 	result, segment_count = Rhino.Input.RhinoGet.GetInteger("Divide curves into how many segments?", False, segment_count)
 	if result <> Rhino.Commands.Result.Success:
 		return result
-
+	
 	for crv_obj, crv_geo in zip(crv_obj_list, crv_geo_list):
 		curve_params = crv_geo.DivideByCount(segment_count, True)
 		l_params = arr_to_list(curve_params)

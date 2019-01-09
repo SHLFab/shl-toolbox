@@ -135,6 +135,7 @@ def get_drawing_planes(section_dims, baseplane, increment):
 def get_lowest_curve_info(brep, h_tol):
 	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
 	bdims = wge.get_bounding_dims(brep)
+	Rhino.Geometry.Brep.MergeCoplanarFaces(brep,D_TOL)
 	brep_faces = wge.get_extreme_srf(brep, h_tol,False)
 
 	crvs_by_brep = []
@@ -160,7 +161,55 @@ def get_lowest_curve_info(brep, h_tol):
 	return [list_curves,bdims]
 
 
-def extrude_features(feature_crv):
+def brep_or_crv(guids):
+	#probably want to add extrusions, type 1073741824, as if they are breps
+	c = [x for x in guids if rs.ObjectType(x) == 4]
+	b = [x for x in guids if rs.ObjectType(x) == 16]
+	return c,b
+
+#function used to process an individual floor
+def process_floor(in_objects,floor_outline):
+	"""function used to process an individual floor.
+	input:
+		in_objects: the internal curves and breps selected for this floor
+		floor_outline: the outline curve for this floor.
+	output: (crv,[crv])
+		crv: the offset boundary curve for the floor
+		[crv]: the internal curves for the floor
+	"""
+	#classify the inputs
+	in_crvs, in_breps = brep_or_crv(in_objects)
+	
+	#section all the breps
+	brep_sections = []
+	for b in in_breps:
+		cut_height = wge.get_brep_height(b)
+		pcurves = wge.get_brep_plan_cut(rs.coercebrep(b),cut_height/2,D_TOL)
+		brep_sections.extend(pcurves)
+	
+	k = wru.add_curves_to_layer(brep_sections,LCUT_INDICES[0])
+	
+	sections = [] #to be sections taken from the breps
+	in_crvs.extend(k)
+	
+	bb = rs.BoundingBox(floor_outline)
+	corner = bb[0]
+	bdims = wge.get_bounding_dims(floor_outline)
+	proj_srf = rs.AddSrfPt([bb[0],bb[1],bb[2],bb[3]])
+	
+	projected_crvs = rs.ProjectCurveToSurface(in_crvs,proj_srf,[0,0,-1])
+	create_pts = rs.VectorCreate([0,0,0],bb[0])
+	rs.MoveObjects(projected_crvs,create_pts)
+	
+	rs.DeleteObjects(in_crvs)
+	rs.DeleteObject(proj_srf)
+	#project everything
+	internal_crvs = None
+	
+	#project floor outline curve and offset it
+	offset_floor_crv = None
+	
+	return offset_floor_crv,internal_crvs
 	
 
 def rc_plot_volumes(use_epsilon):
@@ -190,6 +239,51 @@ def rc_plot_volumes(use_epsilon):
 	bHavePreselectedObjects = False
 
 	while True:
+		res = go.Get()
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			# print res
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+#	rs.EnableRedraw(False)
+	global THICKNESS
+	THICKNESS = opt_thickness.CurrentValue
+
+	global LCUT_INDICES
+	LCUT_INDICES = wla.get_lcut_layers()
+	
+	#THIS PORTION SHOULD ASSUME ONE ITEM INSTEAD OF THE CURRENT SETUP.
+	#Get brep representations of objects
+	brep_geo_list = []
+	for i in xrange(go.ObjectCount):
+		b_obj = go.Object(i).Object()
+		brep_geo_list.append(b_obj.Geometry)
+	
+	#...brep conversion may be necessary
+	new_brep_list = []
+	for i, geo in enumerate(brep_geo_list):
+		if geo.GetType() != Rhino.Geometry.Brep:
+			new_brep_list.append(wru.extrusion_to_brep(geo))
+		else:
+			new_brep_list.append(geo)
+	
+	rs.UnselectAllObjects()
+	
+	#new selector
+	gFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	go.SetCommandPrompt("Select breps and curves to project. Breps are assumed to be vertical")
+	
+	while True:
 		res = go.GetMultiple(1,0)
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
@@ -204,21 +298,17 @@ def rc_plot_volumes(use_epsilon):
 			go.EnablePreSelect(False, True)
 			continue
 		break
-
-	rs.EnableRedraw(False)
-
-	global THICKNESS
-	THICKNESS = opt_thickness.CurrentValue
-
-	global LCUT_INDICES
-	LCUT_INDICES = wla.get_lcut_layers()
-
-	#Get brep representations of objects
-	brep_geo_list = []
+	
+	#Get geometry
+	obj_guids = []
+	obj_geos = []
 	for i in xrange(go.ObjectCount):
 		b_obj = go.Object(i).Object()
-		brep_geo_list.append(b_obj.Geometry)
-
+		obj_geos.append(b_obj.Geometry)
+		obj_guids.append(b_obj.Id)
+	
+	outline_crv, internals = process_floor(obj_guids,new_brep_list[0])
+	
 	#...brep conversion may be necessary
 	new_brep_list = []
 	for i, geo in enumerate(brep_geo_list):
@@ -226,11 +316,6 @@ def rc_plot_volumes(use_epsilon):
 			new_brep_list.append(wru.extrusion_to_brep(geo))
 		else:
 			new_brep_list.append(geo)
-	
-	#TODO: boolean difference out the features:
-		#1. move them to the top of the bounding box
-		#2. extrude them down through the height of the bounding box
-		#3. boolean them out and carry on... treat the features as a group.
 	
 	#set base for output.
 	xbase = 0
@@ -339,7 +424,7 @@ def sortcompare(a, b):
 # The command name is defined by the filname minus "_cmd.py"
 def RunCommand( is_interactive ):
 	setGlobals()
-	rc_plot_volumes(False)
+	rc_plot_volumes(True)
 	return 0
 
 RunCommand(False)

@@ -214,7 +214,7 @@ def rc_unroll_ortho():
 
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
+	
 	opt_thickness = Rhino.Input.Custom.OptionDouble(THICKNESS,0.2,1000)
 	opt_lid = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 
