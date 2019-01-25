@@ -36,8 +36,9 @@ def setGlobals():
 	global GAP_SIZE
 	global TEXTSIZE
 	global SORTDIR
-
-	LCUT_INDICES = []
+	global LCUT_INDICES
+	
+	LCUT_INDICES = wla.get_lcut_layers()
 	THICKNESS = 5.5
 	GAP_SIZE = 5
 
@@ -167,7 +168,8 @@ def brep_or_crv(guids):
 	b = [x for x in guids if rs.ObjectType(x) == 16]
 	return c,b
 
-#function used to process an individual floor
+
+#process an individual floor
 def process_floor(in_objects,floor_outline):
 	"""function used to process an individual floor.
 	input:
@@ -176,11 +178,13 @@ def process_floor(in_objects,floor_outline):
 	output: (crv,[crv])
 		crv: the offset boundary curve for the floor
 		[crv]: the internal curves for the floor
+		pt: lower-left reference point
+		bdims = bounding dims of this floor
 	"""
 	#classify the inputs
 	in_crvs, in_breps = brep_or_crv(in_objects)
 	
-	#section all the breps
+	#get list of crvs to project
 	brep_sections = []
 	for b in in_breps:
 		cut_height = wge.get_brep_height(b)
@@ -188,32 +192,37 @@ def process_floor(in_objects,floor_outline):
 		brep_sections.extend(pcurves)
 	
 	k = wru.add_curves_to_layer(brep_sections,LCUT_INDICES[0])
-	
-	sections = [] #to be sections taken from the breps
 	in_crvs.extend(k)
 	
+	#get the outline brep curve
+	cut_height = wge.get_brep_height(floor_outline)
+	floor_outline_crvs = wge.get_brep_plan_cut(floor_outline,cut_height/2,D_TOL)
+	floor_outline_crvs = wru.add_curves_to_layer(floor_outline_crvs,LCUT_INDICES[1])
+	
+	#get bounding info for the floor outline
 	bb = rs.BoundingBox(floor_outline)
 	corner = bb[0]
 	bdims = wge.get_bounding_dims(floor_outline)
 	proj_srf = rs.AddSrfPt([bb[0],bb[1],bb[2],bb[3]])
 	
-	projected_crvs = rs.ProjectCurveToSurface(in_crvs,proj_srf,[0,0,-1])
-	create_pts = rs.VectorCreate([0,0,0],bb[0])
-	rs.MoveObjects(projected_crvs,create_pts)
+	internal_crvs = rs.ProjectCurveToSurface(in_crvs,proj_srf,[0,0,-1]) if in_crvs else []
+	offset_floor_crv = rs.ProjectCurveToSurface(floor_outline_crvs,proj_srf,[0,0,-1])
 	
 	rs.DeleteObjects(in_crvs)
+	rs.DeleteObjects(floor_outline_crvs)
 	rs.DeleteObject(proj_srf)
-	#project everything
-	internal_crvs = None
 	
-	#project floor outline curve and offset it
-	offset_floor_crv = None
-	
-	return offset_floor_crv,internal_crvs
-	
+	out_floor_crvs = rs.coercecurve(offset_floor_crv)
+	out_internal_crvs = [rs.coercecurve(x) for x in internal_crvs]
+	rs.DeleteObject(offset_floor_crv)
+	rs.DeleteObjects(internal_crvs)
+	#TODO: make sure objects are being deleted
+	return out_floor_crvs,out_internal_crvs,corner,bdims
 
-def rc_plot_volumes(use_epsilon):
+
+def rc_get_inputs():
 	
+	#1. Get plan surface
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
 	
@@ -222,8 +231,8 @@ def rc_plot_volumes(use_epsilon):
 	opt_inplace = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_heights = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	
-	go.SetCommandPrompt("Select floorplate layer to extract plan cuts")
-	go.AddOptionDouble("Thickness", opt_thickness)
+	go.SetCommandPrompt("Select floorplate outline surface to extract plan cuts")
+	go.AddOptionDouble("FacadeThickness", opt_thickness)
 	
 	go.GroupSelect = True
 	go.SubObjectSelect = False
@@ -234,15 +243,14 @@ def rc_plot_volumes(use_epsilon):
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.DeselectAllBeforePostSelect = False
-
+	
 	res = None
 	bHavePreselectedObjects = False
-
+	
 	while True:
 		res = go.Get()
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
-			# print res
 			go.EnablePreSelect(False, True)
 			continue
 		#If not correct
@@ -254,35 +262,27 @@ def rc_plot_volumes(use_epsilon):
 			continue
 		break
 	
-#	rs.EnableRedraw(False)
+	#set globals
 	global THICKNESS
 	THICKNESS = opt_thickness.CurrentValue
-
-	global LCUT_INDICES
-	LCUT_INDICES = wla.get_lcut_layers()
 	
-	#THIS PORTION SHOULD ASSUME ONE ITEM INSTEAD OF THE CURRENT SETUP.
 	#Get brep representations of objects
-	brep_geo_list = []
-	for i in xrange(go.ObjectCount):
-		b_obj = go.Object(i).Object()
-		brep_geo_list.append(b_obj.Geometry)
+	if go.ObjectCount != 1:
+		return
+	boundary_brep = go.Object(0).Object()
+	boundary_brep = boundary_brep.Geometry
+	if boundary_brep.GetType() != Rhino.Geometry.Brep: boundary_brep = wru.extrusion_to_brep(boundary_brep)
 	
-	#...brep conversion may be necessary
-	new_brep_list = []
-	for i, geo in enumerate(brep_geo_list):
-		if geo.GetType() != Rhino.Geometry.Brep:
-			new_brep_list.append(wru.extrusion_to_brep(geo))
-		else:
-			new_brep_list.append(geo)
-	
-	rs.UnselectAllObjects()
-	
-	#new selector
-	gFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	envelope_guid = go.Object(0).Object().Id
+	rs.LockObject(envelope_guid)
+	#2. Get projection curves
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
-	go.SetCommandPrompt("Select breps and curves to project. Breps are assumed to be vertical")
 	
+	floor_guids = []
+	floor_num = 1
+	objects_selected = True
+	
+	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % floor_num)
 	while True:
 		res = go.GetMultiple(1,0)
 		#If new option entered, redraw a possible result
@@ -306,16 +306,48 @@ def rc_plot_volumes(use_epsilon):
 		b_obj = go.Object(i).Object()
 		obj_geos.append(b_obj.Geometry)
 		obj_guids.append(b_obj.Id)
+	rs.UnselectObjects(obj_guids)
+	floor_guids.append(obj_guids)
 	
-	outline_crv, internals = process_floor(obj_guids,new_brep_list[0])
+	go = Rhino.Input.Custom.GetObject()
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	floor_num = 2
+	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % floor_num)
+	while True:
+		res = go.GetMultiple(1,0)
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			# print res
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#Get geometry
+	obj_guids = []
+	obj_geos = []
+	for i in xrange(go.ObjectCount):
+		b_obj = go.Object(i).Object()
+		obj_geos.append(b_obj.Geometry)
+		obj_guids.append(b_obj.Id)
+	rs.UnselectObjects(obj_guids)
+	floor_guids.append(obj_guids)
+	
+	rs.UnlockObject(envelope_guid)
+	return boundary_brep,floor_guids
+
+
+def rc_cut_plan(boundary_brep, floor_guids, use_epsilon):
+	
+	outline_crv, internals, refpt, bdims = process_floor(floor_guids,boundary_brep)
 	
 	#...brep conversion may be necessary
-	new_brep_list = []
-	for i, geo in enumerate(brep_geo_list):
-		if geo.GetType() != Rhino.Geometry.Brep:
-			new_brep_list.append(wru.extrusion_to_brep(geo))
-		else:
-			new_brep_list.append(geo)
 	
 	#set base for output.
 	xbase = 0
@@ -323,88 +355,80 @@ def rc_plot_volumes(use_epsilon):
 	#set the amount to move up from the bottom of the brep for cutting the lower outline.
 	#this should be replaced by a projection of the bottom face of the brep.
 	epsilon = D_TOL*2
-
+	
 	select_items = []
-	for i,brep in enumerate(new_brep_list):
+	
+	crv_list = [ [[outline_crv],internals] ]
+	layer_list = [[LCUT_INDICES[1],LCUT_INDICES[2]]] #TODO: this needs to be the correct layer indices!!!!
+	refpt_list = [refpt]
+	bdims_list = [bdims]
+	
+	increment = max(d.X for d in bdims_list) + GAP_SIZE*1
+	dplane_list = get_drawing_planes(bdims_list,rs.WorldXYPlane(),GAP_SIZE)
+	refplane_list = [rs.MovePlane(rs.WorldXYPlane(),pt) for pt in refpt_list]
+	
+	for i,floor in enumerate(crv_list):
+		t = Rhino.Geometry.Transform.ChangeBasis(dplane_list[i],refplane_list[i])
 		
-		#get label prefix and bounding dims for this brep
-		bdims = wge.get_bounding_dims(brep)
-		baseplane = rs.MovePlane(rs.WorldXYPlane(),[xbase,ybase,0])
-		label_letter = wut.number_to_letter(i)
-		label_prefix = label_letter + "-"
-
-		#prepare heights and labels for each section cut
-		num_sections = 1
-		remaining_thickness = 0
-		cuts_at = [epsilon] if use_epsilon else [0]
-		brep_label = label_letter
-		section_labels = [label_letter]
-		
-		num_sections, remaining_thickness, cuts_at = get_section_division(bdims.Z,THICKNESS)
-		if use_epsilon: cuts_at[0] = epsilon
-		brep_label = label_letter + " r: " + str(round(remaining_thickness,2))
-		section_labels = [label_prefix+str(i) for i in xrange(len(cuts_at))]
-		
-		#get section information for each cut
-		section_planes = get_brep_section_planes(brep, cuts_at)
-		
-		#get lowest curve info
-		section_curves, section_dims = [[],[]]
-		for i,plane in enumerate(section_planes):
-			curve,dims = [0,0]
-			if (not use_epsilon) and (i == 0):
-				curve, dims = get_lowest_curve_info(brep,D_TOL*2)
-				section_curves.append(curve)
-				section_dims.append(dims)
-			elif (i == 0) :
-				curve, dims = get_section_curve_info_multi_no_ortho(brep,plane)
-				section_curves.append(curve)
-				section_dims.append(dims)
-			else:
-				pass
-			
-		
-		##DO WORK HERE##
-		drawing_planes = get_drawing_planes(section_dims,baseplane,GAP_SIZE)
-		
-		#place curves in drawing location
-		for sp, dp, sc in zip(section_planes, drawing_planes, section_curves):
-			t = Rhino.Geometry.Transform.ChangeBasis(dp,sp)
-			for c in sc:
+		for j,layer_crvs in enumerate(floor):
+			for c in layer_crvs:
 				c.Transform(t)
-
-		#THIS IS STILL A MESS: LABEL ADDING
-		#draw curves and add text dots
-		top_label_pt = get_brep_label_pt(brep)
-		brep_textdot = rs.AddTextDot(brep_label,top_label_pt)
-		rs.ObjectLayer(brep_textdot,"XXX_LCUT_00-GUIDES")
-
-		label_pts = []
-		for sc,label in zip(section_curves,section_labels):
-			temp_area = 0
-			for i,c in enumerate(sc):
-				crv = wru.add_curve_to_layer(c,LCUT_INDICES[1])
-				select_items.append(crv)
-				if i == 0:
-					label_pts.append(rs.CurveAreaCentroid(crv)[0])
-					temp_area = rs.CurveArea(crv)
-				else:
-					if rs.CurveArea(crv) > temp_area:
-						label_pts[-1] = rs.CurveAreaCentroid(crv)[0]
-						temp_area = rs.CurveArea(crv)
-
-		fab_tags = wfa.add_fab_tags(label_pts,section_labels,TEXTSIZE)
-		for tag in fab_tags: rs.ObjectLayer(tag,"XXX_LCUT_02-SCORE")
-
-		ybase += max([s.Y for s in section_dims]) + GAP_SIZE*1
-
-		for tag in fab_tags: select_items.extend(tag)
-		#THIS IS STILL A MESS: LABEL ADDING
+			wru.add_curves_to_layer(layer_crvs,layer_list[i][j])
+		
+		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
+		td = rs.AddTextDot(str(i),labelpt)
+		rs.ObjectLayer(td,"XXX_LCUT_00-GUIDES")
+	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)
 	rs.Redraw()
 	rs.EnableRedraw(True)
 
+def rc_cut_plan2(boundary_brep, floor_guids, use_epsilon):
+	
+	crv_list,layer_list,refpt_list,bdims_list = [[],[],[],[]]
+	for guids in floor_guids:
+		outline_crv, internals, refpt, bdims = process_floor(guids,boundary_brep)
+		crv_list.append( [[outline_crv],internals])
+		layer_list.append([LCUT_INDICES[1],LCUT_INDICES[2]]) #TODO: this needs to be the correct layer indices!!!!
+		refpt_list.append(refpt)
+		bdims_list.append(bdims)
+	#...brep conversion may be necessary
+	
+	#set base for output.
+	xbase = 0
+	ybase = 0
+	#set the amount to move up from the bottom of the brep for cutting the lower outline.
+	#this should be replaced by a projection of the bottom face of the brep.
+	epsilon = D_TOL*2
+	
+	select_items = []
+	
+#	crv_list = [ [[outline_crv],internals] ]
+#	layer_list = [[LCUT_INDICES[1],LCUT_INDICES[2]]] #TODO: this needs to be the correct layer indices!!!!
+#	refpt_list = [refpt]
+#	bdims_list = [bdims]
+	
+	increment = max(d.X for d in bdims_list) + GAP_SIZE*1
+	dplane_list = get_drawing_planes(bdims_list,rs.WorldXYPlane(),GAP_SIZE)
+	refplane_list = [rs.MovePlane(rs.WorldXYPlane(),pt) for pt in refpt_list]
+	
+	for i,floor in enumerate(crv_list):
+		t = Rhino.Geometry.Transform.ChangeBasis(dplane_list[i],refplane_list[i])
+		
+		for j,layer_crvs in enumerate(floor):
+			for c in layer_crvs:
+				c.Transform(t)
+			wru.add_curves_to_layer(layer_crvs,layer_list[i][j])
+		
+		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
+		td = rs.AddTextDot(str(i+1),labelpt)
+		rs.ObjectLayer(td,"XXX_LCUT_00-GUIDES")
+	
+	rs.UnselectAllObjects()
+	rs.SelectObjects(select_items)
+	rs.Redraw()
+	rs.EnableRedraw(True)
 
 #sort function for comparing collection along a vector.
 def sortcompare(a, b):
@@ -424,7 +448,11 @@ def sortcompare(a, b):
 # The command name is defined by the filname minus "_cmd.py"
 def RunCommand( is_interactive ):
 	setGlobals()
-	rc_plot_volumes(True)
+	
+	boundary_brep, obj_guids = rc_get_inputs()
+	
+#	rc_cut_plan(boundary_brep,obj_guids,True)
+	rc_cut_plan2(boundary_brep,obj_guids,True)
 	return 0
 
 RunCommand(False)
