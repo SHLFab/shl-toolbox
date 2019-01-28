@@ -48,9 +48,10 @@ def get_section_planes(brep,thickness):
 			pass
 			#rs.AddTextDot(i,point)
 	
-	height = rs.Distance(bb[0],bb[4])
+	bounding_height = rs.Distance(bb[0],bb[4])
+	start_height = bb[0].Z
 	xy_plane = rs.WorldXYPlane()
-	s_heights = wut.frange(-0.001,height,thickness)
+	s_heights = wut.frange(start_height,bounding_height,thickness)
 	
 	planes = [rs.MovePlane(xy_plane, [0,0,x]) for x in s_heights]
 	
@@ -274,11 +275,19 @@ def rc_getinput():
 def rc_terraincut(b_obj):
 	
 	if str(b_obj.ObjectType) != "Brep":
-		print "make it a brep"
 		b_geo = extrusion_to_brep(b_obj.Geometry)
 	else:
 		b_geo = b_obj.Geometry
-		
+	
+	initial_boundary_guids = []
+	initial_boundary_crv = []
+	for e in b_geo.Edges:
+#		initial_boundary_guids.append(wrh.add_curve_to_layer(Rhino.Geometry.Curve.ProjectToPlane(e.EdgeCurve,Rhino.Geometry.Plane.WorldXY),1)) #debug
+		initial_boundary_crv.append(Rhino.Geometry.Curve.ProjectToPlane(e.EdgeCurve,Rhino.Geometry.Plane.WorldXY))
+	
+#	rs.JoinCurves(initial_boundary_guids) #debug
+	joined_boundary_crv = Rhino.Geometry.Curve.JoinCurves(initial_boundary_crv,D_TOL)
+	
 	#extrude down the topography surface in order to take sections
 	bool_merged = Rhino.Geometry.Brep.MergeCoplanarFaces(b_geo,D_TOL)
 	extruded_srf_id = extrude_down_srf(wrh.docobj_to_guid(b_obj))
@@ -290,7 +299,11 @@ def rc_terraincut(b_obj):
 	#get the section curves and the section srfs
 	section_srfs = []
 	for i,plane in enumerate(planes):
-		plane_sections = get_section(extruded_srf,plane)
+		#if first level, get brep outline
+		if i > 0:
+			plane_sections = get_section(extruded_srf,plane)
+		else:
+			plane_sections = joined_boundary_crv
 		current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections]
 		#debug
 		for brep in current_level_srfs:
@@ -333,6 +346,7 @@ def rc_terraincut(b_obj):
 		
 		#if we are at a level that should be hollowed-out, do so.
 		if boolean_level_ind < len(extruded_section_breps):
+			print "boolean level", i
 			final_level_breps = []
 			#iterate through the "host breps": breps that receive boolean operations.
 			for host_brep in brep_level:

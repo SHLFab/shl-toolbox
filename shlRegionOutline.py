@@ -47,14 +47,15 @@ def outline_region():
 	arr_preview_geom = get_preview_geometry(input_curves)
 	for indCrv in arr_preview_geom:
 		rs.ExtendCurveLength(indCrv,0,2,extension_length)
-
+	
+	rs.EnableRedraw(False)
 	#Get curveboolean and display it
 	region_was_created = True
 	rs.UnselectAllObjects()
 	rs.SelectObjects(arr_preview_geom)
 	# print Rhino.RhinoDoc.ActiveDoc
 	# print sc.doc.ActiveDoc
-	rs.EnableRedraw(False)
+	
 	rs.Command("_-CurveBoolean _AllRegions _Enter")
 	# print "doc is", type(sc.doc)
 	pcurve_outline = rs.LastCreatedObjects()
@@ -72,6 +73,7 @@ def outline_region():
 		preview_srf = []
 
 	rs.EnableRedraw(True)
+	rs.Redraw()
 
 	#Set up input object
 	go = Rhino.Input.Custom.GetOption()
