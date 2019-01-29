@@ -170,7 +170,7 @@ def brep_or_crv(guids):
 
 
 #process an individual floor
-def process_floor(in_objects,floor_outline):
+def process_floor(in_objects,floor_outline,outline_cut_height=None):
 	"""function used to process an individual floor.
 	input:
 		in_objects: the internal curves and breps selected for this floor
@@ -187,16 +187,16 @@ def process_floor(in_objects,floor_outline):
 	#get list of crvs to project
 	brep_sections = []
 	for b in in_breps:
-		cut_height = wge.get_brep_height(b)
-		pcurves = wge.get_brep_plan_cut(rs.coercebrep(b),cut_height/2,D_TOL)
+		cut_height = wge.get_brep_height(b)/2
+		pcurves = wge.get_brep_plan_cut(rs.coercebrep(b),cut_height,D_TOL)
 		brep_sections.extend(pcurves)
 	
-	k = wru.add_curves_to_layer(brep_sections,LCUT_INDICES[0])
-	in_crvs.extend(k)
+	b_section_guids = wru.add_curves_to_layer(brep_sections,LCUT_INDICES[0])
+	in_crvs.extend(b_section_guids)
 	
 	#get the outline brep curve
-	cut_height = wge.get_brep_height(floor_outline)
-	floor_outline_crvs = wge.get_brep_plan_cut(floor_outline,cut_height/2,D_TOL)
+	if not outline_cut_height: outline_cut_height = wge.get_brep_height(floor_outline)
+	floor_outline_crvs = wge.get_brep_plan_cut(floor_outline,outline_cut_height,D_TOL)
 	floor_outline_crvs = wru.add_curves_to_layer(floor_outline_crvs,LCUT_INDICES[1])
 	
 	#get bounding info for the floor outline
@@ -208,7 +208,7 @@ def process_floor(in_objects,floor_outline):
 	internal_crvs = rs.ProjectCurveToSurface(in_crvs,proj_srf,[0,0,-1]) if in_crvs else []
 	offset_floor_crv = rs.ProjectCurveToSurface(floor_outline_crvs,proj_srf,[0,0,-1])
 	
-	rs.DeleteObjects(in_crvs)
+#	rs.DeleteObjects(in_crvs)
 	rs.DeleteObjects(floor_outline_crvs)
 	rs.DeleteObject(proj_srf)
 	
@@ -216,6 +216,7 @@ def process_floor(in_objects,floor_outline):
 	out_internal_crvs = [rs.coercecurve(x) for x in internal_crvs]
 	rs.DeleteObject(offset_floor_crv)
 	rs.DeleteObjects(internal_crvs)
+	rs.DeleteObjects(b_section_guids)
 	#TODO: make sure objects are being deleted
 	return out_floor_crvs,out_internal_crvs,corner,bdims
 
@@ -343,6 +344,214 @@ def rc_get_inputs():
 	return boundary_brep,floor_guids
 
 
+def rc_get_inputs2():
+	
+	#1. Get plan surface
+	go = Rhino.Input.Custom.GetObject()
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
+	
+	opt_thickness = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
+	
+	go.SetCommandPrompt("Select floorplate outline surface to extract plan cuts")
+	go.AddOptionDouble("FacadeThickness", opt_thickness)
+	
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.AcceptEnterWhenDone(True)
+	go.AcceptNothing(True)
+	go.EnableClearObjectsOnEntry(False)
+	go.EnableUnselectObjectsOnExit(False)
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.DeselectAllBeforePostSelect = False
+	
+	res = None
+	bHavePreselectedObjects = False
+	
+	while True:
+		res = go.Get()
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#set globals
+	global THICKNESS
+	THICKNESS = opt_thickness.CurrentValue
+	
+	#Get brep representations of objects
+	if go.ObjectCount != 1:
+		return
+	boundary_brep = go.Object(0).Object()
+	boundary_brep = boundary_brep.Geometry
+	if boundary_brep.GetType() != Rhino.Geometry.Brep: boundary_brep = wru.extrusion_to_brep(boundary_brep)
+	envelope_guid = go.Object(0).Object().Id
+	rs.LockObject(envelope_guid)
+	
+	#B. Get cut plane for floor
+	plan_cut_heights = []
+	floor_num = 1
+	go = Rhino.Input.Custom.GetObject()
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
+	
+	go.SetCommandPrompt("Floor %d: Select plane for floorplate cut. Command will use top surface." % floor_num)
+	
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.AcceptEnterWhenDone(True)
+	go.AcceptNothing(True)
+	go.EnableClearObjectsOnEntry(False)
+	go.EnableUnselectObjectsOnExit(False)
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.DeselectAllBeforePostSelect = False
+	
+	res = None
+	bHavePreselectedObjects = False
+	
+	while True:
+		res = go.Get()
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			go.EnablePreSelect(False, True)
+			continue
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#Get brep representations of objects
+	if go.ObjectCount != 1:
+		return
+	floorplate_brep = go.Object(0).Object()
+	floorplate_brep = floorplate_brep.Geometry
+	bb = rs.BoundingBox(floorplate_brep)
+	plan_cut_heights.append(bb[4].Z)
+	
+	
+	#C. get breps and curves to project
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	
+	floor_guids = []
+	objects_selected = True
+	
+	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % floor_num)
+	while True:
+		res = go.GetMultiple(1,0)
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			# print res
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#Get geometry
+	obj_guids = []
+	obj_geos = []
+	for i in xrange(go.ObjectCount):
+		b_obj = go.Object(i).Object()
+		obj_geos.append(b_obj.Geometry)
+		obj_guids.append(b_obj.Id)
+	rs.UnselectObjects(obj_guids)
+	floor_guids.append(obj_guids)
+	
+	
+	#B. Get cut plane for floor 2
+	floor_num = 2
+	go = Rhino.Input.Custom.GetObject()
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
+	
+	go.SetCommandPrompt("Floor %d: Select plane for floorplate cut. Command will use top surface." % floor_num)
+	
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.AcceptEnterWhenDone(True)
+	go.AcceptNothing(True)
+	go.EnableClearObjectsOnEntry(False)
+	go.EnableUnselectObjectsOnExit(False)
+	go.GroupSelect = True
+	go.SubObjectSelect = False
+	go.DeselectAllBeforePostSelect = False
+	
+	res = None
+	bHavePreselectedObjects = False
+	
+	while True:
+		res = go.Get()
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#Get brep representations of objects
+	if go.ObjectCount != 1:
+		return
+	floorplate_brep = go.Object(0).Object()
+	floorplate_brep = floorplate_brep.Geometry
+	bb = rs.BoundingBox(floorplate_brep)
+	plan_cut_heights.append(bb[4].Z)
+	
+	#C. Get projection geometry for this floor.
+	go = Rhino.Input.Custom.GetObject()
+	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
+	
+	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % floor_num)
+	while True:
+		res = go.GetMultiple(1,0)
+		#If new option entered, redraw a possible result
+		if res == Rhino.Input.GetResult.Option:
+			# print res
+			go.EnablePreSelect(False, True)
+			continue
+		#If not correct
+		elif res != Rhino.Input.GetResult.Object:
+			return Rhino.Commands.Result.Cancel
+		if go.ObjectsWerePreselected:
+			bHavePreselectedObjects = True
+			go.EnablePreSelect(False, True)
+			continue
+		break
+	
+	#Get geometry
+	obj_guids = []
+	obj_geos = []
+	for i in xrange(go.ObjectCount):
+		b_obj = go.Object(i).Object()
+		obj_geos.append(b_obj.Geometry)
+		obj_guids.append(b_obj.Id)
+	rs.UnselectObjects(obj_guids)
+	floor_guids.append(obj_guids)
+	
+	rs.UnlockObject(envelope_guid)
+	return boundary_brep, floor_guids, plan_cut_heights
+
+
 def rc_cut_plan(boundary_brep, floor_guids, use_epsilon):
 	
 	outline_crv, internals, refpt, bdims = process_floor(floor_guids,boundary_brep)
@@ -384,12 +593,12 @@ def rc_cut_plan(boundary_brep, floor_guids, use_epsilon):
 	rs.Redraw()
 	rs.EnableRedraw(True)
 
-def rc_cut_plan2(boundary_brep, floor_guids, use_epsilon):
+def rc_cut_plan2(boundary_brep, floor_guids, cut_heights, use_epsilon):
 	
 	crv_list,layer_list,refpt_list,bdims_list = [[],[],[],[]]
-	for guids in floor_guids:
-		outline_crv, internals, refpt, bdims = process_floor(guids,boundary_brep)
-		crv_list.append( [[outline_crv],internals])
+	for i,guids in enumerate(floor_guids):
+		outline_crv, internals, refpt, bdims = process_floor(guids,boundary_brep,cut_heights[i])
+		crv_list.append([[outline_crv],internals])
 		layer_list.append([LCUT_INDICES[1],LCUT_INDICES[2]]) #TODO: this needs to be the correct layer indices!!!!
 		refpt_list.append(refpt)
 		bdims_list.append(bdims)
@@ -404,11 +613,6 @@ def rc_cut_plan2(boundary_brep, floor_guids, use_epsilon):
 	
 	select_items = []
 	
-#	crv_list = [ [[outline_crv],internals] ]
-#	layer_list = [[LCUT_INDICES[1],LCUT_INDICES[2]]] #TODO: this needs to be the correct layer indices!!!!
-#	refpt_list = [refpt]
-#	bdims_list = [bdims]
-	
 	increment = max(d.X for d in bdims_list) + GAP_SIZE*1
 	dplane_list = get_drawing_planes(bdims_list,rs.WorldXYPlane(),GAP_SIZE)
 	refplane_list = [rs.MovePlane(rs.WorldXYPlane(),pt) for pt in refpt_list]
@@ -419,11 +623,13 @@ def rc_cut_plan2(boundary_brep, floor_guids, use_epsilon):
 		for j,layer_crvs in enumerate(floor):
 			for c in layer_crvs:
 				c.Transform(t)
-			wru.add_curves_to_layer(layer_crvs,layer_list[i][j])
+			select_items.extend(wru.add_curves_to_layer(layer_crvs,layer_list[i][j]))
+			
 		
 		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
 		td = rs.AddTextDot(str(i+1),labelpt)
 		rs.ObjectLayer(td,"XXX_LCUT_00-GUIDES")
+		select_items.append(td)
 	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)
@@ -449,10 +655,11 @@ def sortcompare(a, b):
 def RunCommand( is_interactive ):
 	setGlobals()
 	
-	boundary_brep, obj_guids = rc_get_inputs()
-	
+#	boundary_brep, obj_guids = rc_get_inputs()
+	boundary_brep, obj_guids, cut_heights = rc_get_inputs2()
+	print cut_heights
 #	rc_cut_plan(boundary_brep,obj_guids,True)
-	rc_cut_plan2(boundary_brep,obj_guids,True)
+	rc_cut_plan2(boundary_brep,obj_guids,cut_heights,True)
 	return 0
 
 RunCommand(False)
