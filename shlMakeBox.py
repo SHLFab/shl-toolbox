@@ -19,7 +19,8 @@ def setGlobals():
 	#mm.
 	#default vals
 	global T_IBOX,T_OBOX,J_LEN,LCUT_GAP,TICK_DIST
-
+	global SELECT_GUIDS
+	
 	T_IBOX = 5.5 #inner box thickness (foamcore)
 	T_OBOX = 2 #outer box thickness (card)
 	J_LEN = 20 #joint length
@@ -40,6 +41,8 @@ def setGlobals():
 	global LCUT_NAMES
 	lcut_inds = wla.get_lcut_layers()
 	LCUT_NAMES = wla.ind_to_name(lcut_inds)
+	
+	SELECT_GUIDS = []
 
 
 #GENERAL UTILITIES
@@ -125,16 +128,18 @@ def add_tickmarks(rect,len,offset):
 		return "ERROR"
 	pts = rs.SortPoints(pts)
 	# print pts
-
+	
 	t_0 = rs.CopyObject(pts[0],[offset,offset,0])
 	t_1 = rs.CopyObject(t_0,[len,0,0])
 	t_2 = rs.CopyObject(t_0,[0,len,0])
-
+	
 	tick = rs.AddPolyline([t_1,t_0,t_2])
 	rs.DeleteObjects([t_0,t_1,t_2])
 	tick_2 = rs.MirrorObject(tick,mirror_v[0],mirror_v[1],True)
 	ticks_3 = rs.MirrorObjects([tick,tick_2],mirror_h[0],mirror_h[1],True)
 	rs.ObjectLayer([tick,tick_2]+ticks_3,LCUT_NAMES[3])
+	tick_list = [tick,tick_2]+ticks_3
+	return tick_list
 
 
 #make grips and return information for placing them
@@ -185,6 +190,7 @@ def add_logo(pt_base,W,H):
 	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
 	logo = rs.LastCreatedObjects()
 	rs.ObjectLayer(logo,LCUT_NAMES[4])
+	SELECT_GUIDS.extend(logo)
 
 
 #deprecated
@@ -232,7 +238,7 @@ def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE):
 	short_b = rs.AddRectangle([L+LCUT_GAP, H+LCUT_GAP - T_IBOX ,0], W - 2*T_IBOX, H - T_IBOX)
 	long_a = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, 0, 0], L, H - T_IBOX)
 	long_b = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, H + LCUT_GAP - T_IBOX,0], L, H - T_IBOX)
-
+	
 	grip_data = make_grips(bb_dims[0],bb_dims[1])
 	desired_grip_gap = 130
 	if bb_dims[1] > desired_grip_gap*1.4:
@@ -240,12 +246,14 @@ def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE):
 	else:
 		grips = add_grips(top,grip_data,bb_dims[1]/20)
 	rs.ObjectLayer(grips,LCUT_NAMES[1])
-
+	
 	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
 	rs.ObjectLayer(all_geo,LCUT_NAMES[1])
-
+	
 	br = rs.BoundingBox(all_geo)[:4]
-
+	
+	SELECT_GUIDS.extend(all_geo)
+	SELECT_GUIDS.extend(grips)
 	return br
 
 
@@ -270,10 +278,7 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	n_joins_W = get_num_joins(W,J_LEN)
 	n_joins_L = get_num_joins(L,J_LEN)
 	n_joins_H = get_num_joins(H,J_LEN)
-
-	# print n_joins_W
-	# print n_joins_L
-	# print n_joins_H
+	
 	#get bounding rectangles for each geometry. placeholder; this won't all be necessary
 	bottom = rs.AddRectangle(ORIGIN_OB, L ,W)
 	top = rs.AddRectangle([0,W+LCUT_GAP+dy,0], L, W)
@@ -313,20 +318,24 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
 
 	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
-
+	
+	final_crvs = sb+ss+sl+[top]
 	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
-	rs.CopyObjects(ss,[0,H+LCUT_GAP,0])
-	rs.CopyObjects(sl,[0,H+LCUT_GAP,0])
+	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
+	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
 
 	centerpt, _ = rs.CurveAreaCentroid(short_a)
 	add_logo(centerpt,W,H)
 
 	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
 	br = rs.BoundingBox(all_geo)[:4]
-
+	
 	rs.DeleteObjects(sides_b+sides_s+sides_l)
 	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
-
+	
+	SELECT_GUIDS.extend(final_crvs)
+	SELECT_GUIDS.extend(grips)
+	SELECT_GUIDS.extend(tickmarks)
 	return br
 
 
@@ -425,12 +434,11 @@ def rc_shl_box():
 	get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
 	
 	rs.UnselectAllObjects()
+	rs.SelectObjects(SELECT_GUIDS)
 	rs.Redraw()
 	rs.EnableRedraw(True)
-		
 
 
 if __name__ == "__main__":
 	setGlobals()
 	rc_shl_box()
-	

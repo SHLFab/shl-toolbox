@@ -593,6 +593,7 @@ def rc_cut_plan(boundary_brep, floor_guids, use_epsilon):
 	rs.Redraw()
 	rs.EnableRedraw(True)
 
+
 def rc_cut_plan2(boundary_brep, floor_guids, cut_heights, use_epsilon):
 	
 	crv_list,layer_list,refpt_list,bdims_list = [[],[],[],[]]
@@ -624,7 +625,6 @@ def rc_cut_plan2(boundary_brep, floor_guids, cut_heights, use_epsilon):
 			for c in layer_crvs:
 				c.Transform(t)
 			select_items.extend(wru.add_curves_to_layer(layer_crvs,layer_list[i][j]))
-			
 		
 		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
 		td = rs.AddTextDot(str(i+1),labelpt)
@@ -635,19 +635,6 @@ def rc_cut_plan2(boundary_brep, floor_guids, cut_heights, use_epsilon):
 	rs.SelectObjects(select_items)
 	rs.Redraw()
 	rs.EnableRedraw(True)
-
-#sort function for comparing collection along a vector.
-def sortcompare(a, b):
-	pointa, pointb = a[0], b[0]
-	rc = cmp(pointa.X, pointb.X)
-	if SORTDIR.X<0: rc = -1*rc
-	if rc==0:
-		rc = cmp(pointa.Y, pointb.Y)
-		if SORTDIR.Y<0: rc = -1*rc
-	if rc==0:
-		rc = cmp(pointa.Z, pointb.Z)
-		if SORTDIR.Z<0: rc = -1*rc
-	return rc
 
 
 # RunCommand is the called when the user enters the command name in Rhino.
