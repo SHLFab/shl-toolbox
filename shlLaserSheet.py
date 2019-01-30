@@ -87,6 +87,7 @@ def RunCommand( is_interactive ):
 	plane = rs.MovePlane(plane, rs.PointAdd(basept, [-margin,-margin,0]))
 	outer_rect = rs.AddRectangle(plane, L, W)
 	rs.ObjectLayer([inner_rect, outer_rect],"XXX_LCUT_00-GUIDES")
-	return 1
+	rs.SelectObjects([inner_rect,outer_rect])
+	return True
 
 RunCommand(True)
