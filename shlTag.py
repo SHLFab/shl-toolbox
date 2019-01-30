@@ -191,6 +191,8 @@ def rc_get_tags(curves):
 		rs.ObjectLayer(id,"XXX_LCUT_03-LSCORE")
 	for id in dot_guids:
 		rs.ObjectLayer(id,"XXX_LCUT_00-GUIDES")
+	
+	rs.SelectObjects(text_guids+dot_guids)
 	sc.doc.Views.Redraw()
 
 
