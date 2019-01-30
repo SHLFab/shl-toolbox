@@ -322,6 +322,7 @@ def rc_plot_volumes(use_epsilon):
 
 		for tag in fab_tags: select_items.extend(tag)
 		#THIS IS STILL A MESS: LABEL ADDING
+	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)
 	rs.Redraw()

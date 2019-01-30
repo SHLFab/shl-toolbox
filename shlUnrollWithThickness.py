@@ -277,7 +277,8 @@ def rc_unroll_ortho():
 	#future implementation should use bounding dims and curves rather than dimension-based system.
 	unrolled_brep_info = []
 	lid_info = []
-
+	
+	SELECT_GUIDS = []
 	for i,obj in enumerate(brep_obj_list):
 		#geometry prep: convert extrusions to breps
 		if str(obj.ObjectType) != "Brep":
@@ -314,38 +315,42 @@ def rc_unroll_ortho():
 			face_label = prefix + str(brep_side_info.labelNums[j])
 			rect = rs.AddRectangle([xbase,ybase,0],piecedims.x,piecedims.y)
 			dot = rs.AddTextDot(face_label, rs.CurveAreaCentroid(rect)[0])
-
+			
 			rs.ObjectLayer(dot,"XXX_LCUT_00-GUIDES")
 			rs.ObjectLayer(rect,"XXX_LCUT_01-CUT")
+			SELECT_GUIDS.extend([rect,dot])
 			xbase += piecedims[0] + GAP_SIZE
-
+	
 		#add the lids
 		if LID == True:
-
+			
 			#transform the lid curve to the basepoint
 			lid_curve = lid_info[i].outline
 			p1 = rs.WorldXYPlane()
 			p2 = rs.PlaneFromNormal([xbase,ybase,0],[0,0,1],[1,0,0])
 			orient = Rhino.Geometry.Transform.ChangeBasis(rs.coerceplane(p2),rs.coerceplane(p1))
 			lid_curve.Transform(orient)
-
+			
 			#add the curve to the document
 			crv_1 = wru.add_curve_to_layer(lid_curve,LCUT_INDICES[1])
 			crv_2 = rs.CopyObject(crv_1,[lid_info[i].dims.x + GAP_SIZE, 0, 0]) #change this to use a transform; it's nasty.
-
+			
 			#add text dot
 			face_label_1 = prefix + str(len(brep_side_info.dims))
 			face_label_2 = prefix + str(len(brep_side_info.dims)+1)
 			dot_1 = rs.AddTextDot(face_label_1, rs.CurveAreaCentroid(crv_1)[0])
 			dot_2 = rs.AddTextDot(face_label_2, rs.CurveAreaCentroid(crv_2)[0])
 			rs.ObjectLayer([dot_1,dot_2],"XXX_LCUT_00-GUIDES")
-
+			
+			SELECT_GUIDS.extend([crv_1,crv_2,dot_1,dot_2])
+			
 		top_label = rs.AddTextDot(top_label_text,brep_side_info.topLabelPt)
 		rs.ObjectLayer(top_label,"XXX_LCUT_00-GUIDES")
 		ybase += brep_output_bounding_heights[i] + GAP_SIZE*4
-
-
+	
+	
 	rs.UnselectAllObjects()
+	rs.SelectObjects(SELECT_GUIDS)
 	rs.Redraw()
 	rs.EnableRedraw(True)
 
