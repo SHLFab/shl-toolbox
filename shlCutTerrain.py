@@ -209,17 +209,23 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	first level of list is section heights, second level is breps.
 	output: the new terrain breps
 	"""
+	rs.BooleanDifference(
+	#boolean problem is being caused by non-manifold error. need to scale the B_breps prior to booleaning.
 	new_terrain_section_breps = []
 	for i,brep_level in enumerate(terrain_section_breps):
 		new_level_terrain_section_breps = []
-		for host_brep in brep_level:
-			sub_breps = bldg_section_breps[i]
-			boolean_result = rs.BooleanDifference([host_brep],sub_breps,False)
+		for A_brep in brep_level:
+			rs.ObjectLayer(A_brep,"s10")
+			B_breps = rs.CopyObjects(bldg_section_breps[i])
+			[rs.ObjectLayer(B_brep,"s11") for B_brep in B_breps]
+			boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 			if boolean_result:
 				c = [rs.CopyObject(x) for x in boolean_result]
 				new_level_terrain_section_breps.extend(c)
-			else: new_level_terrain_section_breps.append(host_brep)
-		rs.DeleteObjects(sub_breps)
+			else: new_level_terrain_section_breps.append(rs.CopyObject(A_brep))
+			rs.ObjectLayer(A_brep,"out_srfs")
+			[rs.ObjectLayer(B_brep,"out_srfs") for B_brep in B_breps]
+		rs.DeleteObjects(B_breps)
 		rs.DeleteObjects(boolean_result)
 		rs.ObjectLayer(new_level_terrain_section_breps,"s3")
 		new_terrain_section_breps.append(new_level_terrain_section_breps)
@@ -605,14 +611,10 @@ def rc_terraincut2(b_obj):
 	
 	#make voids for existing buildings
 	building_breps = get_breps_on_layer("BUILDINGS") #TODO: replace with user-selections
-	building_sections = []
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
+	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
 	return
-	#TODO: build the bottom building brep from a projection or something... current method grabs whatever's at the requisite depth and extrudes...
-	#see note 2 at top of script... maybe this is okay.
-	#do booleaning of building breps.
-	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
 #	make the frame brep
 	num_divisions = len(section_srfs)
