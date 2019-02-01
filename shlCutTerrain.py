@@ -165,6 +165,8 @@ def get_building_booleans(building_breps,planes):
 			pb = pb[0]
 			srf_added = wrh.add_brep_to_layer(pb,LCUT_IND[4])
 			b = rs.ExtrudeSurface(srf_added,SHORT_GUIDE)
+			centroid, _ = rs.SurfaceAreaCentroid(b)
+			b = rs.ScaleObject(b,centroid,[1.0,1.0,1.5])
 			rs.ObjectLayer(b,"s7")
 			boolean_breps_level.append(b)
 			rs.DeleteObject(srf_added)
@@ -209,7 +211,6 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	first level of list is section heights, second level is breps.
 	output: the new terrain breps
 	"""
-	rs.BooleanDifference(
 	#boolean problem is being caused by non-manifold error. need to scale the B_breps prior to booleaning.
 	new_terrain_section_breps = []
 	for i,brep_level in enumerate(terrain_section_breps):
@@ -417,12 +418,12 @@ def rc_terraincut(b_obj):
 					boolean_result = boolean_result[0]
 					type = rs.ObjectType(boolean_result)
 					if len(frame_intersection) !=0:
-#						debug
+						#debug
 						k = rs.CopyObject(boolean_result)
 						j = rs.CopyObject(frame_intersection)
 						rs.ObjectLayer(k,"s9")
 						rs.ObjectLayer(j,"s10")
-#						debug
+						#debug
 						frame_union_items = [boolean_result]
 						frame_union_items.extend(frame_intersection)
 						framed_brep = rs.BooleanUnion(frame_union_items,True) #Watch this
@@ -436,7 +437,7 @@ def rc_terraincut(b_obj):
 					rc_b = rs.coercebrep(framed_brep)
 					rc_b.MergeCoplanarFaces(D_TOL) #This fails occasionally. why? (seems to have something to do with frame size... overlap? problem results from an all-zero guid)
 					merged_brep = doc.Objects.Add(rc_b)
-#					rs.DeleteObject(framed_brep)
+					#rs.DeleteObject(framed_brep)
 					rs.ObjectLayer(merged_brep,"s5")
 					
 					#if the result of the boolean operations is different from the original slice brep,
@@ -561,6 +562,7 @@ def get_surface_outline(b_geo):
 	else:
 		print "Error: more than one surface boundary outline"
 		return None
+
 
 def rc_terraincut2(b_obj):
 	
