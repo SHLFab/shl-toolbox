@@ -78,7 +78,7 @@ def rc_layer_change():
 	list_vals = ["Guides","Cut","Score","LightScore","Engrave"]
 	list_index = 1
 	opt_list = go.AddOptionList("DestinationLayer",list_vals,list_index)
-	go.SetCommandPrompt("Select curves to move to layer")
+	go.SetCommandPrompt("Select curves to move to layer or press Enter to add lasercut layers to document")
 	go.AddOptionToggle("CopyCurves", opt_copy)
 	#go.AddOptionDouble("InnerThickness", opt_inner)
 
@@ -97,7 +97,7 @@ def rc_layer_change():
 
 	while True:
 		res = go.GetMultiple(1,0)
-
+		
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
 			# print res
@@ -105,24 +105,29 @@ def rc_layer_change():
 			if go.OptionIndex() == opt_list:
 				list_index = go.Option().CurrentListOptionIndex
 			continue
-
+		
+		elif res == Rhino.Input.GetResult.Nothing:
+			MANUAL = True
+			get_lcut_layers()
+			return None
+		
 		#If not correct
 		elif res != Rhino.Input.GetResult.Object:
 			return Rhino.Commands.Result.Cancel
-
+		
 		if go.ObjectsWerePreselected:
 			bHavePreselectedObjects = True
 			go.EnablePreSelect(False, True)
 			continue
-
+		
 		break
-
+	
 	#option results
 	DESTINATION_LAYER = list_vals[list_index]
 	COPY_ORIGINALS = opt_copy.CurrentValue
-
+	
 	get_lcut_layers()
-
+	
 	#selected curve objects
 	c_ids_list = []
 	for i in xrange(go.ObjectCount):
