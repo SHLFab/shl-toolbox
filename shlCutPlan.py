@@ -164,8 +164,8 @@ def get_lowest_curve_info(brep, h_tol):
 
 def brep_or_crv(guids):
 	#probably want to add extrusions, type 1073741824, as if they are breps
-	c = [x for x in guids if rs.ObjectType(x) == 4]
-	b = [x for x in guids if rs.ObjectType(x) == 16]
+	c = [x for x in guids if rs.ObjectType(x) == 4 ]
+	b = [x for x in guids if (rs.ObjectType(x) == 16 or rs.ObjectType(x) == 1073741824)]
 	return c,b
 
 
