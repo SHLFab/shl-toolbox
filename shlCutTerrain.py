@@ -656,12 +656,12 @@ def rc_terraincut2(b_obj):
 			rs.ObjectLayer(b,"s12")
 	
 	#GET THE UNIONING OBJECTS
-	num_divisions = len(section_srfs)
-	for i, brep_level in enumerate(extruded_section_breps):
-		for A_brep in brep_level:
-			final_brep = None
-			frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKESS,THICKNESS*num_divisions)
-			frame_instance = rs.CopyObject(frame_brep,[0,0,i*THICKNESS])
+#	num_divisions = len(section_srfs)
+#	for i, brep_level in enumerate(extruded_section_breps):
+#		for A_brep in brep_level:
+#			final_brep = None
+#			frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKESS,THICKNESS*num_divisions)
+#			frame_instance = rs.CopyObject(frame_brep,[0,0,i*THICKNESS])
 	
 #	return
 	#brep construction

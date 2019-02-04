@@ -36,12 +36,13 @@ def outline_region():
 
 	#Get original curves and curves to extend
 	input_curves = rs.GetObjects("Select Curves", 4, False, True, True)
-	rs.EnableRedraw(True)
-
+	if not input_curves: return
+	
 	#Get length
 	extension_length = rs.GetInteger("Enter Extension Length")
 	if not extension_length:
 		rs.EnableRedraw(True)
+		print "No Extension Length entered."
 		return False
 
 	arr_preview_geom = get_preview_geometry(input_curves)
