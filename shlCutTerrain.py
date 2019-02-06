@@ -14,7 +14,6 @@ reload(wrh)
 import shl_toolbox_lib_dev.geo as wge
 reload(wge)
 
-
 """
 KNOWN ISSUES TO FIX:
 1. Use of a small epsilon to get the first section through the terrain.
@@ -175,6 +174,7 @@ def get_building_booleans(building_breps,planes):
 	
 	return boolean_breps
 
+
 def get_building_booleans_old(building_breps,planes):
 	
 	bldg_intersection_boolean_breps = []
@@ -203,6 +203,7 @@ def get_building_booleans_old(building_breps,planes):
 		bldg_intersection_boolean_breps.append(boolean_breps_level)
 	#debug preview: change layer of the boolean breps.
 	return bldg_intersection_boolean_breps
+
 
 #when method is robust, make boolean operation delete the inputs.
 def cut_building_volumes(terrain_section_breps,bldg_section_breps):
@@ -565,6 +566,12 @@ def get_surface_outline(b_geo):
 		print "Error: more than one surface boundary outline"
 		return None
 
+def cut_frame_from_brep(brep,frame):
+	bdiff = rs.BooleanDifference(brep,frame,False)
+	if bdiff:
+		rs.DeleteObject(brep)
+		brep = bdiff
+	return brep
 
 def rc_terraincut2(b_obj):
 	
@@ -618,10 +625,8 @@ def rc_terraincut2(b_obj):
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
 	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
-#	make the frame brep
-#	num_divisions = len(section_srfs)
-#	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
-#	section_final_breps = []
+	num_divisions = len(section_srfs)
+	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
 	
 	#boolean out the features
 	final_breps = []
@@ -635,6 +640,8 @@ def rc_terraincut2(b_obj):
 				B_breps = []
 				for B_srf in section_srfs[boolean_level_ind]:
 					B_breps.append(rs.ExtrudeSurface(B_srf,LONG_GUIDE))
+				#truncate the B_breps
+				B_breps = [cut_frame_from_brep(b,frame_brep) for b in B_breps]
 				rs.ObjectLayer(B_breps,"s6")
 				boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 				rs.DeleteObjects(B_breps)
@@ -653,94 +660,7 @@ def rc_terraincut2(b_obj):
 	#debug
 	for a in final_breps:
 		for b in a:
-			rs.ObjectLayer(b,"s12")
-	
-	#GET THE UNIONING OBJECTS
-#	num_divisions = len(section_srfs)
-#	for i, brep_level in enumerate(extruded_section_breps):
-#		for A_brep in brep_level:
-#			final_brep = None
-#			frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKESS,THICKNESS*num_divisions)
-#			frame_instance = rs.CopyObject(frame_brep,[0,0,i*THICKNESS])
-	
-#	return
-	#brep construction
-#	for i,brep_level in enumerate(extruded_section_breps):
-#		boolean_level_ind = i+2
-#		
-#		#if we are at a level that should be hollowed-out, do so.
-#		if boolean_level_ind < len(extruded_section_breps):
-#			print "boolean level", i
-#			final_level_breps = []
-#			#iterate through the "host breps": breps that receive boolean operations.
-#			for host_brep in brep_level:
-#				
-#				#prepare: extrude the breps two levels above the current level.
-#				final_brep = None
-#				boolbreps = []
-#				for child_brep in section_srfs[boolean_level_ind]:
-#					boolbreps.append(rs.ExtrudeSurface(child_brep,LONG_GUIDE))
-#				rs.ObjectLayer(boolbreps,"s6")
-#				
-#				#prepare: get a frame brep for filling in edges of the brep.
-#				frame_instance = rs.CopyObject(frame_brep,[0,0,i*THICKNESS])
-#				
-#				#boolean: crop out the portion that will be used for filling in.
-#				frame_intersection = rs.BooleanIntersection(frame_instance,host_brep,False)
-#				if len(frame_intersection) != 0:
-#					preview_intersection = rs.CopyObject(frame_intersection)
-#					rs.ObjectLayer(preview_intersection,"XXX_LCUT_04-ENGRAVE")
-#				
-#				#boolean: hollow out the host.
-#				boolean_result = rs.BooleanDifference([host_brep],boolbreps,False)
-#				rs.ObjectLayer(boolean_result,"s8")
-#				rs.DeleteObject(frame_instance)
-#				rs.DeleteObjects(boolbreps)
-#				
-#				#if there was a boolean result, union it with the frame.
-#				if len(boolean_result) == 1:
-#					boolean_result = boolean_result[0]
-#					type = rs.ObjectType(boolean_result)
-#					if len(frame_intersection) !=0:
-##						debug
-#						k = rs.CopyObject(boolean_result)
-#						j = rs.CopyObject(frame_intersection)
-#						rs.ObjectLayer(k,"s9")
-#						rs.ObjectLayer(j,"s10")
-##						debug
-#						frame_union_items = [boolean_result]
-#						frame_union_items.extend(frame_intersection)
-#						framed_brep = rs.BooleanUnion(frame_union_items,True) #Watch this
-#						framed_brep = framed_brep[0]
-#					else:
-#						framed_brep = boolean_result
-#					
-#					if framed_brep == sys.Guid("00000000-0000-0000-0000-000000000000"): framed_brep = boolean_result #additional error handling for BooleanUnion
-#					#merge faces.
-#					rs.ObjectLayer(framed_brep,"s1")
-#					rc_b = rs.coercebrep(framed_brep)
-#					rc_b.MergeCoplanarFaces(D_TOL) #This fails occasionally. why? (seems to have something to do with frame size... overlap? problem results from an all-zero guid)
-#					merged_brep = doc.Objects.Add(rc_b)
-##					rs.DeleteObject(framed_brep)
-#					rs.ObjectLayer(merged_brep,"s5")
-#					
-#					#if the result of the boolean operations is different from the original slice brep,
-#					#use it as the final brep. otherwise use the host brep.
-#					if framed_brep is not None: boolean_result = [merged_brep]
-#					a = rs.coercebrep(boolean_result)
-#					b = rs.coercebrep(host_brep)
-#					if abs( a.GetVolume() - b.GetVolume() ) > 0.01:
-#						rs.DeleteObject(host_brep)
-#						final_brep = boolean_result
-#					else:
-#						final_brep = host_brep
-#				else:
-#					final_brep = host_brep
-#				
-#				final_level_breps.append(final_brep)
-#			section_final_breps.append(final_level_breps)
-#		else:
-#			section_final_breps.append(extruded_section_breps[i])
+			rs.ObjectLayer(b,"s12")	
 	
 	#get the final surfaces by iterating through the final section breps and extracting the top faces.
 	final_srfs = []
@@ -751,7 +671,6 @@ def rc_terraincut2(b_obj):
 			final_srfs_level.append(doc.Objects.Add(xsrf[0].DuplicateFace(False))) #must properly type the faces
 		rs.ObjectLayer(final_srfs_level,"s4")
 		final_srfs.append(final_srfs_level)
-#	rs.DeleteObject(frame_brep)
 	
 	#project etching layers to final srfs	
 	final_srfs.reverse()
