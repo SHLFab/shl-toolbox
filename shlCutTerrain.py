@@ -42,10 +42,6 @@ def get_section_division(height,thickness):
 
 def get_section_planes(brep,thickness):
 	bb = rs.BoundingBox(brep)
-	if bb:
-		for i, point in enumerate(bb):
-			pass
-			rs.AddTextDot(i,point)
 	
 	start_height = bb[0].Z
 	end_height = bb[4].Z
@@ -175,8 +171,23 @@ def get_building_booleans(building_breps,planes):
 	return boolean_breps
 
 
+#TODO: MAKE BOOLEANS CORRESPONDING TO BUILDING FOOTPRINTS
+def get_building_footprints(building_breps,planes):
+#	for b in building_breps:
+#		for p in planes:
+#			plane_sections = get_section(
+#	
+#		for i, plane in enumerate(planes):
+#		sections_level = []
+#		for b in building_breps:
+#			plane_sections = get_section(rs.coercebrep(b),plane)
+#			if not plane_sections: continue
+#			else: sections_level.append(plane_sections)
+#		sections.append(sections_level)
+	return
+
+
 def get_building_booleans_old(building_breps,planes):
-	
 	bldg_intersection_boolean_breps = []
 	bldg_intersection_breps = []
 	
@@ -268,7 +279,7 @@ def rc_getinput():
 	
 	res = None
 	bHavePreselectedObjects = False
-
+	
 	while True:
 		res = go.Get()
 		
@@ -290,7 +301,6 @@ def rc_getinput():
 		break
 	
 	#rs.EnableRedraw(False)
-	
 	global THICKNESS
 	THICKNESS = opt_thickness.CurrentValue
 	global BORDER_THICKNESS
@@ -298,7 +308,6 @@ def rc_getinput():
 	global LCUT_INDICES
 	LCUT_INDICES = wla.get_lcut_layers()
 	bool_inplace = opt_inplace.CurrentValue
-	
 	
 	#set guides
 	global SHORT_GUIDE, LONG_GUIDE
@@ -325,7 +334,6 @@ def rc_terraincut(b_obj):
 	initial_boundary_guids = []
 	initial_boundary_crv = []
 	for e in b_geo.Edges:
-		#initial_boundary_guids.append(wrh.add_curve_to_layer(Rhino.Geometry.Curve.ProjectToPlane(e.EdgeCurve,Rhino.Geometry.Plane.WorldXY),1)) #debug
 		initial_boundary_crv.append(Rhino.Geometry.Curve.ProjectToPlane(e.EdgeCurve,Rhino.Geometry.Plane.WorldXY))
 	
 	#rs.JoinCurves(initial_boundary_guids) #debug
@@ -566,6 +574,7 @@ def get_surface_outline(b_geo):
 		print "Error: more than one surface boundary outline"
 		return None
 
+
 def cut_frame_from_brep(brep,frame):
 	bdiff = rs.BooleanDifference(brep,frame,False)
 	if bdiff:
@@ -573,7 +582,8 @@ def cut_frame_from_brep(brep,frame):
 		brep = bdiff
 	return brep
 
-def rc_terraincut2(b_obj):
+
+def rc_terraincut2(b_obj,building_layer,etching_layer):
 	
 	if str(b_obj.ObjectType) != "Brep":
 		b_geo = extrusion_to_brep(b_obj.Geometry)
@@ -602,8 +612,6 @@ def rc_terraincut2(b_obj):
 		else:
 			plane_sections = outline_crv
 		current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections]
-		#debug
-		for brep in current_level_srfs: wrh.add_brep_to_layer(brep,LCUT_IND[1])
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
 	
@@ -614,14 +622,14 @@ def rc_terraincut2(b_obj):
 	for i,brep_level in enumerate(section_srfs):
 		extruded_breps = []
 		for brep in brep_level:
-			srf_added = wrh.add_brep_to_layer(brep,LCUT_IND[1])
+			srf_added = wrh.add_brep_to_layer(brep,LCUT_IND[2])
 			if i == 0: frame_base_surface = rs.CopyObject(srf_added)
 			extruded_breps.append(rs.ExtrudeSurface(srf_added,SHORT_GUIDE))
 			rs.DeleteObject(srf_added)
 		extruded_section_breps.append(extruded_breps)
 	
 	#make voids for existing buildings
-	building_breps = get_breps_on_layer("BUILDINGS") #TODO: replace with user-selections
+	building_breps = get_breps_on_layer(building_layer) #TODO: replace with user-selections
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
 	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
@@ -634,7 +642,6 @@ def rc_terraincut2(b_obj):
 		boolean_level_ind = i+2
 		final_level_breps = []
 		if boolean_level_ind < len(extruded_section_breps):
-			print "boolean level", i
 			for A_brep in brep_level:
 				final_brep = None
 				B_breps = []
@@ -654,13 +661,12 @@ def rc_terraincut2(b_obj):
 		else:
 			rs.ObjectLayer(A_brep,"s11")
 			final_level_breps.extend(brep_level)
-		
 		final_breps.append(final_level_breps)
 	
 	#debug
 	for a in final_breps:
 		for b in a:
-			rs.ObjectLayer(b,"s12")	
+			rs.ObjectLayer(b,"s12")
 	
 	#get the final surfaces by iterating through the final section breps and extracting the top faces.
 	final_srfs = []
@@ -692,6 +698,7 @@ def rc_terraincut2(b_obj):
 			if i< len(final_srfs)-1 and sb_outer:
 					p = rs.ProjectCurveToSurface(sb_outer, final_srfs[i+1],[0,0,-1])
 					if p: guide_curves_level.extend(p)
+					rs.DeleteObject(sb_outer)
 		etch_curves_level = project_etching("road",srflevel)
 		
 		etch_curves.append(etch_curves_level)
@@ -699,14 +706,13 @@ def rc_terraincut2(b_obj):
 		guide_curves.append(guide_curves_level)
 	
 	flat_srf_list = [item for sublist in final_srfs for item in sublist]
-	etches = project_etching("road",flat_srf_list)
+#	etches = project_etching(etch_layer,flat_srf_list)
 	
 	etch_curves.reverse()
 	main_curves.reverse()
 	guide_curves.reverse()
 	
 	bb=rs.BoundingBox(main_curves[0])
-	
 	layout_dist = rs.Distance(bb[0],bb[3]) + LASER_GAP
 	preview_dist = rs.Distance(bb[0],bb[1]) + LASER_GAP
 	movement_range = wut.frange(layout_dist,(len(main_curves))*layout_dist,layout_dist)
@@ -723,6 +729,7 @@ def rc_terraincut2(b_obj):
 			rs.MoveObjects(guide_curves[i],[0,movement_range[i-1],-cp_guide.OriginZ])
 		
 	
+	rs.Redraw()
 	main_curves = [item for sublist in main_curves for item in sublist]
 	guide_curves = [item for sublist in guide_curves for item in sublist]
 	etch_curves = [item for sublist in etch_curves for item in sublist]
@@ -741,15 +748,21 @@ def rc_terraincut2(b_obj):
 	
 	etch_curves = wge.trim_boundary(etch_curves,cb_crvs,D_TOL)
 	rs.DeleteObjects(cb_crvs)
+	rs.DeleteObject(frame_brep)
 	
 	rs.ObjectLayer(main_curves,"XXX_LCUT_01-CUT")
 	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
 	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
 	rs.ObjectLayer(preview_geo,"XXX_LCUT_00-GUIDES")
 	return 0
-	
+
+
 if __name__ == "__main__":
 	set_globals()
 	surface_geometry = rc_getinput()
-#	rc_terraincut(surface_geometry)
-	rc_terraincut2(surface_geometry)
+	building_layer = rs.GetLayer("Select Building Layer")
+	etch_layer = rs.GetLayer("Select Etching Layer")
+	rs.EnableRedraw(False)
+	rc_terraincut2(surface_geometry, building_layer, etch_layer)
+	rs.EnableRedraw(True)
+	rs.Redraw()
