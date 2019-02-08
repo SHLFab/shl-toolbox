@@ -173,17 +173,25 @@ def get_building_booleans(building_breps,planes):
 
 #TODO: MAKE BOOLEANS CORRESPONDING TO BUILDING FOOTPRINTS
 def get_building_footprints(building_breps,planes):
-#	for b in building_breps:
-#		for p in planes:
-#			plane_sections = get_section(
-#	
-#		for i, plane in enumerate(planes):
-#		sections_level = []
-#		for b in building_breps:
-#			plane_sections = get_section(rs.coercebrep(b),plane)
-#			if not plane_sections: continue
-#			else: sections_level.append(plane_sections)
-#		sections.append(sections_level)
+	
+	rs.EnableRedraw()
+	plane_sections = []
+	slice_depth = []
+	for b in building_breps:
+		for i,p in enumerate(planes):
+			s = get_section(rs.coercebrep(b),p)
+			if s:
+				plane_sections.append(s[0])
+				slice_depth.append(i)
+				break
+	
+	for section,d in zip(plane_sections,slice_depth):
+		k = wrh.add_curve_to_layer(section,1)
+		rs.ObjectLayer(k,"Default")
+		print d
+#	slice_depth, plane_sections = [(x-1,Rhino.Geometry.Transform.Translation?????? ) for x,y in zip(plane_sections,slice_depth) if x > 0]
+	rs.Redraw()
+	rs.EnableRedraw(False)
 	return
 
 
@@ -629,7 +637,8 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		extruded_section_breps.append(extruded_breps)
 	
 	#make voids for existing buildings
-	building_breps = get_breps_on_layer(building_layer) #TODO: replace with user-selections
+	building_breps = get_breps_on_layer(building_layer)
+	get_building_footprints(building_breps,planes)
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
 	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
