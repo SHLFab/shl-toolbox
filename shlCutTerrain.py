@@ -66,7 +66,8 @@ def extrude_down_srf(srf,height=None):
 
 
 def get_frame_brep(outline_srf,border_thickness,thickness):
-	outline_crv = rs.JoinCurves(rs.DuplicateEdgeCurves(outline_srf))
+	edge_crvs = rs.DuplicateEdgeCurves(outline_srf)
+	outline_crv = rs.JoinCurves(edge_crvs)
 	pt, _ = rs.CurveAreaCentroid(outline_crv)
 	inner_crv = rs.OffsetCurve(outline_crv,pt,border_thickness,[0,0,1])
 	rs.MoveObjects([outline_crv,inner_crv],[0,0,thickness*2])
@@ -79,6 +80,7 @@ def get_frame_brep(outline_srf,border_thickness,thickness):
 	
 	frame_brep = rs.BooleanDifference([outer_brep],[inner_brep])
 	rs.DeleteObjects([outline_crv,inner_crv])
+	rs.DeleteObjects(edge_crvs)
 	rs.DeleteObject(path_line)
 	return frame_brep
 
@@ -320,11 +322,10 @@ def get_surface_outline(b_geo):
 	for e in b_geo.Edges:
 		initial_boundary_crv.append(Rhino.Geometry.Curve.ProjectToPlane(e.EdgeCurve,proj_plane))
 	joined_boundary_crv = Rhino.Geometry.Curve.JoinCurves(initial_boundary_crv,D_TOL)
-	print joined_boundary_crv.Length
 	if len(joined_boundary_crv) == 1:
 		return joined_boundary_crv
 	else:
-		print "Error: more than one surface boundary outline"
+		print "Script Error: more than one surface boundary outline. Please save this file and report error."
 		return None
 
 
@@ -344,7 +345,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		b_geo = b_obj.Geometry
 	
 	outline_crv = get_surface_outline(b_geo)
-	wrh.add_curves_to_layer(outline_crv,1)
+#	wrh.add_curves_to_layer(outline_crv,1)
 	
 	#extrude down the topography surface in order to take sections
 	bool_merged = Rhino.Geometry.Brep.MergeCoplanarFaces(b_geo,D_TOL)
@@ -354,7 +355,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	#get planes for sectioning.
 	planes = get_section_planes(b_geo,THICKNESS)
 	
-#	[rs.AddPlaneSurface(x,10,10) for x in planes] #debug
+	#[rs.AddPlaneSurface(x,10,10) for x in planes] #debug
 	
 	#get the section curves and the section srfs
 	section_srfs = []
@@ -367,6 +368,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections]
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
+#	rs.DeleteObject(outline_crv)
 	
 	#get extrusions of section srfs
 	extruded_section_breps = []
@@ -381,6 +383,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 			rs.DeleteObject(srf_added)
 		extruded_section_breps.append(extruded_breps)
 	
+	rs.Redraw()
 	#make voids for existing buildings
 	building_breps = get_breps_on_layer(building_layer)
 	get_building_footprints(building_breps,planes)
