@@ -8,7 +8,7 @@ sel@shl.dk
 import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
-from scriptcontext import doc
+from scriptcontext import doc, sticky
 import itertools
 from collections import namedtuple
 
@@ -209,14 +209,15 @@ def get_brep_lid_info(brep,start_index,material_thickness):
 
 
 def rc_unroll_ortho():
-
-	THICKNESS = 5.5
-
+	
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
 	
-	opt_thickness = Rhino.Input.Custom.OptionDouble(THICKNESS,0.2,1000)
-	opt_lid = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
+	default_thickness = sticky["thickness"] if sticky.has_key("thickness") else 5.5
+	default_lid = sticky["lid"] if sticky.has_key("lid") else False
+	
+	opt_thickness = Rhino.Input.Custom.OptionDouble(default_thickness,0.2,1000)
+	opt_lid = Rhino.Input.Custom.OptionToggle(default_lid,"No","Yes")
 
 	go.SetCommandPrompt("Select breps to unroll. Breps must be orthogonal (faces at 90 degree angles)")
 	go.AddOptionDouble("Thickness", opt_thickness)
@@ -348,6 +349,8 @@ def rc_unroll_ortho():
 		rs.ObjectLayer(top_label,"XXX_LCUT_00-GUIDES")
 		ybase += brep_output_bounding_heights[i] + GAP_SIZE*4
 	
+	sticky["thickness"] = THICKNESS
+	sticky["lid"] = LID
 	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(SELECT_GUIDS)

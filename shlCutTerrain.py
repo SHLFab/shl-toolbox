@@ -1,6 +1,6 @@
 import rhinoscriptsyntax as rs
 import Rhino
-from scriptcontext import doc
+from scriptcontext import doc, sticky
 import System as sys
 
 import itertools
@@ -246,9 +246,13 @@ def rc_getinput():
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
 	
-	opt_thickness = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
-	opt_borderthickness = Rhino.Input.Custom.OptionDouble(10,0.2,1000)
-	opt_border = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
+	default_thickness = sticky["Thickness"] if sticky.has_key("Thickness") else 2
+	default_borderThickness = sticky["borderThickness"] if sticky.has_key("borderThickness") else 10
+	default_borderBool = sticky["borderBool"] if sticky.has_key("borderBool") else False
+	
+	opt_thickness = Rhino.Input.Custom.OptionDouble(default_thickness,0.2,1000)
+	opt_borderthickness = Rhino.Input.Custom.OptionDouble(default_borderThickness,0.2,1000)
+	opt_border = Rhino.Input.Custom.OptionToggle(default_borderBool,"No","Yes")
 	
 	go.SetCommandPrompt("Select terrain surface")
 	go.AddOptionDouble("MaterialThickness", opt_thickness)
@@ -309,6 +313,10 @@ def rc_getinput():
 	#get topography object
 	brep_obj = go.Object(0).Object()
 	
+	sticky["Thickness"] = THICKNESS
+	sticky["borderThickness"] = BORDER_THICKNESS
+	sticky["borderBool"] = BORDER_BOOL
+	
 	return brep_obj
 
 
@@ -345,7 +353,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		b_geo = b_obj.Geometry
 	
 	outline_crv = get_surface_outline(b_geo)
-#	wrh.add_curves_to_layer(outline_crv,1)
+	#wrh.add_curves_to_layer(outline_crv,1)
 	
 	#extrude down the topography surface in order to take sections
 	bool_merged = Rhino.Geometry.Brep.MergeCoplanarFaces(b_geo,D_TOL)
@@ -368,7 +376,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections]
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
-#	rs.DeleteObject(outline_crv)
+	#rs.DeleteObject(outline_crv)
 	
 	#get extrusions of section srfs
 	extruded_section_breps = []
@@ -519,8 +527,18 @@ if __name__ == "__main__":
 	if isinstance(surface_geometry, Rhino.Commands.Result):
 		print "Invalid Input: no surface selected"
 	else:
-		building_layer = rs.GetLayer("Select Building Layer")
-		etch_layer = rs.GetLayer("Select Etching Layer")
+		if sticky.has_key("buildingLayer") and doc.Layers.Find(sticky["buildingLayer"],True) != -1:
+			building_layer = rs.GetLayer(title="Select Building Layer",layer=sticky["buildingLayer"])
+		else:
+			building_layer = rs.GetLayer("Select Building Layer")
+		
+		if sticky.has_key("etchingLayer") and doc.Layers.Find(sticky["etchingLayer"],True) != -1:
+			etch_layer = rs.GetLayer(title="Select Etching Layer",layer=sticky["etchingLayer"])
+		else:
+			etch_layer = rs.GetLayer("Select Etching Layer")
+		
+		sticky["buildingLayer"] = building_layer
+		sticky["etchingLayer"] = etch_layer
 		rs.EnableRedraw(False)
 		rc_terraincut2(surface_geometry, building_layer, etch_layer)
 		rs.EnableRedraw(True)

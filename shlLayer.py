@@ -8,6 +8,7 @@ v1.1: option list selection bug fix
 
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 import rhinoscriptsyntax as rs
 import Rhino
 
@@ -69,15 +70,17 @@ def get_lcut_layers():
 
 
 def rc_layer_change():
+	#get stickies
+	default_layer_ind = sticky["defaultLayer"] if sticky.has_key("defaultLayer") else 1
+	default_opt_copy = sticky["defaultCopyOpt"] if sticky.has_key("defaultCopyOpt") else False
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
 
-	opt_copy = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
+	opt_copy = Rhino.Input.Custom.OptionToggle(default_opt_copy,"No","Yes")
 
 	#Index is used for layer change.
 	list_vals = ["Guides","Cut","Score","LightScore","Engrave"]
-	list_index = 1
-	opt_list = go.AddOptionList("DestinationLayer",list_vals,list_index)
+	opt_list = go.AddOptionList("DestinationLayer",list_vals,default_layer_ind)
 	go.SetCommandPrompt("Select curves to move to layer or press Enter to add lasercut layers to document")
 	go.AddOptionToggle("CopyCurves", opt_copy)
 	#go.AddOptionDouble("InnerThickness", opt_inner)
@@ -141,7 +144,10 @@ def rc_layer_change():
 		3:"XXX_LCUT_03-LSCORE",
 		4:"XXX_LCUT_04-ENGRAVE",
 		}
-
+	
+	sticky["defaultLayer"] = list_index
+	sticky["defaultCopyOpt"] = COPY_ORIGINALS
+	
 	changed_crvs = change_object_layers(c_ids_list,switcher[list_index],COPY_ORIGINALS)
 	rs.UnselectAllObjects()
 	rs.SelectObjects(changed_crvs)

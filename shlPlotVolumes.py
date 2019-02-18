@@ -9,7 +9,7 @@ sel@shl.dk
 import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
-from scriptcontext import doc
+from scriptcontext import doc, sticky
 import System
 
 import shl_toolbox_lib.layers as wla
@@ -177,9 +177,12 @@ def rc_plot_volumes(use_epsilon):
 
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
-	opt_inplace = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
-	opt_heights = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
+	
+	default_inplaceBool = sticky["inplaceBool"] if sticky.has_key("inplaceBool") else False
+	default_heightsBool = sticky["heightsBool"] if sticky.has_key("heightsBool") else False
+	
+	opt_inplace = Rhino.Input.Custom.OptionToggle(default_inplaceBool,"No","Yes")
+	opt_heights = Rhino.Input.Custom.OptionToggle(default_heightsBool,"No","Yes")
 
 	go.SetCommandPrompt("Select breps to extract plan cuts")
 	go.AddOptionToggle("InPlace", opt_inplace)
@@ -321,7 +324,10 @@ def rc_plot_volumes(use_epsilon):
 		ybase += max([s.Y for s in section_dims]) + GAP_SIZE*1
 
 		for tag in fab_tags: select_items.extend(tag)
-		#THIS IS STILL A MESS: LABEL ADDING
+	
+	
+	sticky["inplaceBool"] = INPLACE
+	sticky["heightsBool"] = BOOL_HEIGHTS
 	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)

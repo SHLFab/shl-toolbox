@@ -9,6 +9,7 @@ import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 import System
 
 import shl_toolbox_lib_dev.layers as wla
@@ -161,11 +162,13 @@ def get_lowest_curve_info(brep, h_tol):
 
 
 def rc_plot_volumes(use_epsilon):
-
+	#get sticky
+	default_thickness = sticky["defaultThickness"] if sticky.has_key("defaultThickness") else 5.5
+	
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
 
-	opt_thickness = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
+	opt_thickness = Rhino.Input.Custom.OptionDouble(default_thickness,0.2,1000)
 	opt_sections = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_inplace = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
 	opt_heights = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
@@ -296,12 +299,18 @@ def rc_plot_volumes(use_epsilon):
 						temp_area = rs.CurveArea(crv)
 
 		fab_tags = wfa.add_fab_tags(label_pts,section_labels,TEXTSIZE)
-		for tag in fab_tags: rs.ObjectLayer(tag,"XXX_LCUT_02-SCORE")
+		for tag in fab_tags:
+			rs.ObjectLayer(tag,"XXX_LCUT_02-SCORE")
+			group_name = rs.AddGroup()
+			rs.AddObjectsToGroup(tag,group_name)
 
 		ybase += max([s.Y for s in section_dims]) + GAP_SIZE*1
 
 		for tag in fab_tags: select_items.extend(tag)
 		#THIS IS STILL A MESS: LABEL ADDING
+	
+	sticky["defaultThickness"] = THICKNESS
+	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)
 	rs.Redraw()

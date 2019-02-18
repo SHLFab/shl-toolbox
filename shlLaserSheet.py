@@ -7,6 +7,7 @@ sel@shl.dk
 
 import rhinoscriptsyntax as rs
 import Rhino
+from scriptcontext import sticky
 
 import shl_toolbox_lib.layers as wla
 reload(wla)
@@ -48,14 +49,14 @@ def unit_convert(dimension):
 	return dimension*conversion
 
 
-def RunCommand( is_interactive ):
+def RunCommand( is_interactive ):	
 	margin = 5
 	L, W = 810, 455
 	basept = Rhino.Geometry.Point3d(0,0,0)
 
 	L = unit_convert(L)
 	W = unit_convert(W)
-
+	margin = unit_convert(margin)
 	go = Rhino.Input.Custom.GetPoint()
 	opt_L = Rhino.Input.Custom.OptionDouble(L,0.2,10000)
 	opt_W = Rhino.Input.Custom.OptionDouble(W,0.2,10000)
@@ -76,10 +77,7 @@ def RunCommand( is_interactive ):
 		elif res == Rhino.Input.GetResult.Point:
 			basept = go.Point()
 		break
-
-	L = opt_L.CurrentValue
-	W = opt_W.CurrentValue
-
+	
 	layer_dict = wla.get_lcut_layers()
 	plane = rs.WorldXYPlane()
 	plane = rs.MovePlane(plane,basept)

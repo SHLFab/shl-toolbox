@@ -9,6 +9,7 @@ import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 
 import itertools
 
@@ -340,16 +341,20 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 
 
 def rc_shl_box():
+	#get stickies
+	default_inner_thickness = sticky["defaultInThickness"] if sticky.has_key("defaultInThickness") else 5.5
+	default_outer_thickness = sticky["defaultOutThickness"] if sticky.has_key("defaultOutThickness") else 2
+	
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
-	opt_inner = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
-	opt_outer = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
-
-	go.SetCommandPrompt("Select breps to be boxed or press Enter for manual dimensioning")
+	
+	opt_inner = Rhino.Input.Custom.OptionDouble(default_inner_thickness,0.2,1000)
+	opt_outer = Rhino.Input.Custom.OptionDouble(default_outer_thickness,0.2,1000)
+	
+	go.SetCommandPrompt("Select breps to be boxed or press Enter for manual dimensioning (Suggested: Inner 5.5, Outer 2)")
 	go.AddOptionDouble("InnerThickness", opt_inner)
 	go.AddOptionDouble("OuterThickness", opt_outer)
-
+	
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.AcceptEnterWhenDone(True)
@@ -407,24 +412,20 @@ def rc_shl_box():
 		bb_h = rs.Distance(bb[0],bb[4])
 		
 	else:
+		#get stickies
+		default_x = sticky["manualXDim"] if sticky.has_key("manualXDim") else 200
+		default_y = sticky["manualYDim"] if sticky.has_key("manualYDim") else 250
+		default_z = sticky["manualZDim"] if sticky.has_key("manualZDim") else 150
+		
 		#Get dimensions manually
-		result, dim = Rhino.Input.RhinoGet.GetNumber("X dimension?",True,200)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_x = dim
+		result, bb_x = Rhino.Input.RhinoGet.GetNumber("X dimension?",True,default_x)
+		if result != Rhino.Commands.Result.Success: return result
 		
-		result, dim = Rhino.Input.RhinoGet.GetNumber("Y dimension?",True,250)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_y = dim
+		result, bb_y = Rhino.Input.RhinoGet.GetNumber("Y dimension?",True,default_y)
+		if result != Rhino.Commands.Result.Success: return result
 		
-		result, dim = Rhino.Input.RhinoGet.GetNumber("Z dimension?",True,200)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_h = dim
+		result, bb_h = Rhino.Input.RhinoGet.GetNumber("Z dimension?",True,default_z)
+		if result != Rhino.Commands.Result.Success: return result
 	
 	bb_w = min(bb_x,bb_y)
 	bb_l = max(bb_x,bb_y)
@@ -432,6 +433,13 @@ def rc_shl_box():
 	br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE)
 	ORIGIN_OB = (0,rs.Distance(br[0],br[3]) + LCUT_GAP,0)
 	get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
+	
+	#set stickies
+	sticky["defaultInThickness"] = T_IBOX
+	sticky["defaultOutThickness"] = T_OBOX
+	sticky["manualXDim"] = bb_x
+	sticky["manualYDim"] = bb_y
+	sticky["manualZDim"] = bb_h
 	
 	rs.UnselectAllObjects()
 	rs.SelectObjects(SELECT_GUIDS)
