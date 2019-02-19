@@ -366,6 +366,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	#[rs.AddPlaneSurface(x,10,10) for x in planes] #debug
 	
 	#get the section curves and the section srfs
+	rs.Redraw()
 	section_srfs = []
 	for i,plane in enumerate(planes):
 		#if first level, get brep outline
@@ -396,7 +397,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	building_breps = get_breps_on_layer(building_layer)
 	get_building_footprints(building_breps,planes)
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
-	extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
+	if bldg_subtraction_breps: extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
 	
 	num_divisions = len(section_srfs)
 	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
@@ -456,14 +457,16 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		etch_curves_level = []
 		
 		for srf in srflevel:
+			rs.Redraw()
 			sb = rs.DuplicateSurfaceBorder(srf)
 			sb_outer = rs.DuplicateSurfaceBorder(srf,1)
 			if sb:
 				main_curves_level.extend(sb)
-			if i< len(final_srfs)-1 and sb_outer:
+			if i < len(final_srfs)-1 and sb_outer:
 					p = rs.ProjectCurveToSurface(sb_outer, final_srfs[i+1],[0,0,-1])
 					if p: guide_curves_level.extend(p)
 					rs.DeleteObject(sb_outer)
+			if sb_outer: rs.DeleteObject(sb_outer) #refactor...
 		etch_curves_level = project_etching("road",srflevel)
 		
 		etch_curves.append(etch_curves_level)
