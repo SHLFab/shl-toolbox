@@ -77,8 +77,9 @@ def rc_collapse_box():
 		vect = rs.VectorCreate(pt2,pt1)
 		vect = rs.VectorDivide(vect,2)
 		rs.MoveObject(srfs[-1],vect)
+		rs.SelectObjects(srfs[-1])
 		rs.DeleteObjects(srfs[:-1])
-
+		
 	
 	rs.EnableRedraw(True)
 	rs.Redraw()

@@ -225,7 +225,7 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 				rs.DeleteObjects(boolean_result)
 				new_level_terrain_section_breps.extend(c)
 			else: 
-#surface deletion bug here
+#surface deletion bug her
 #				#check if the boolean failed because the terrain brep is fully contained in the building brep.
 #				#otherwise, treat this as a failure and append the unaltered terrain brep.
 #				if A_brep and B_breps:
