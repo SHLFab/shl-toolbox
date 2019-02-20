@@ -482,10 +482,10 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	bb=rs.BoundingBox(main_curves[0])
 	layout_dist = rs.Distance(bb[0],bb[3]) + LASER_GAP
 	preview_dist = rs.Distance(bb[0],bb[1]) + LASER_GAP
-	movement_range = wut.frange(layout_dist,(len(main_curves))*layout_dist,layout_dist)
-	
+	movement_range = [(i+1)*layout_dist for i in xrange(len(main_curves))]
 	for i,level_list in enumerate(main_curves):
 		cp_main = rs.CurvePlane(level_list[0])
+		print movement_range[i]
 		rs.MoveObjects(level_list,[0,movement_range[i],-cp_main.OriginZ])
 		
 		if etch_curves[i]:
