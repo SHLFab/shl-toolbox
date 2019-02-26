@@ -24,6 +24,9 @@ def set_globals():
 	
 	global THICKNESS, BORDER_THICKNESS, BORDER_BOOL
 	global LCUT_INDICES
+	global JOIN_ERROR, JOIN_DIST
+	JOIN_ERROR = False
+	JOIN_DIST = 0
 
 
 def get_section_division(height,thickness):
@@ -365,6 +368,7 @@ def cut_frame_from_brep(brep,frame):
 
 def rc_terraincut2(b_obj,building_layer,etching_layer):
 	
+	join_dist = 0
 	if str(b_obj.ObjectType) != "Brep":
 		b_geo = extrusion_to_brep(b_obj.Geometry)
 	else:
@@ -387,12 +391,31 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	rs.Redraw()
 	section_srfs = []
 	for i,plane in enumerate(planes):
+		print i
 		#if first level, get brep outline
 		if i > 0:
 			plane_sections = get_section(extruded_srf,plane)
 		else:
 			plane_sections = outline_crv
-		current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections]
+		#current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections] #debug
+		###DEBUG STARTS####
+		current_level_srfs = []
+		for crv in plane_sections:
+			closed = crv.IsClosed
+			#force close if necessary
+			if not closed:
+#				doc.Objects.Add(crv)
+				dist = rs.Distance(crv.PointAtStart, crv.PointAtEnd)
+				res = crv.MakeClosed(dist*2)
+				join_dist = dist if dist > join_dist else join_dist
+				if res == False: return 0
+#			doc.Objects.Add(crv)
+			new_brep = Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0]
+			current_level_srfs.append(new_brep)
+			new_brep_added = doc.Objects.AddBrep(new_brep)
+#			new_brep_added = rs.AddPlanarSrf([new_brep])
+			rs.ObjectLayer(new_brep_added,"s15")
+		###DEBUG ENDS###
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
 	
@@ -540,7 +563,10 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
 	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
 	rs.ObjectLayer(preview_geo,"XXX_LCUT_00-GUIDES")
-	return 0
+	if join_dist > 0:
+		s = "Had to force-close gaps up to a distance of " + str(join_dist)
+		Rhino.RhinoApp.WriteLine(s)
+	return 1
 
 
 if __name__ == "__main__":
@@ -562,7 +588,9 @@ if __name__ == "__main__":
 		sticky["buildingLayer"] = building_layer
 		sticky["etchingLayer"] = etch_layer
 		rs.EnableRedraw(False)
-		rc_terraincut2(surface_geometry, building_layer, etch_layer)
+		result = rc_terraincut2(surface_geometry, building_layer, etch_layer)
+		if result == 0:
+			print "ERROR: topography slicing error. Try rebuilding the input surface with more control points and trying again."
 		rs.EnableRedraw(True)
 		rs.DeleteObject(SHORT_GUIDE)
 		rs.DeleteObject(LONG_GUIDE)
