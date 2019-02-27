@@ -160,7 +160,7 @@ def get_building_booleans(building_breps,planes):
 			b = rs.ExtrudeSurface(srf_added,SHORT_GUIDE)
 			centroid, _ = rs.SurfaceAreaCentroid(b)
 			b = rs.ScaleObject(b,centroid,[1.0,1.0,1.5])
-			rs.ObjectLayer(b,"s7")
+#			rs.ObjectLayer(b,"s7")
 			boolean_breps_level.append(b)
 			rs.DeleteObject(srf_added)
 			
@@ -185,7 +185,7 @@ def get_building_footprints(building_breps,planes):
 	
 	for section,d in zip(plane_sections,slice_depth):
 		k = wrh.add_curve_to_layer(section,1)
-		rs.ObjectLayer(k,"Default")
+#		rs.ObjectLayer(k,"Default")
 		print section, 
 	m = zip(plane_sections,slice_depth)
 	new_boolean_list = []
@@ -214,14 +214,14 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	first level of list is section heights, second level is breps.
 	output: the new terrain breps
 	"""
-	#boolean problem is being caused by non-manifold error. need to scale the B_breps prior to booleaning.
+	#boolean problem is caused by non-manifold error. need to scale the B_breps prior to booleaning.
 	new_terrain_section_breps = []
 	for i,brep_level in enumerate(terrain_section_breps):
 		new_level_terrain_section_breps = []
 		for A_brep in brep_level:
-			rs.ObjectLayer(A_brep,"s10")
+#			rs.ObjectLayer(A_brep,"s10")
 			B_breps = rs.CopyObjects(bldg_section_breps[i])
-			[rs.ObjectLayer(B_brep,"s11") for B_brep in B_breps]
+#			[rs.ObjectLayer(B_brep,"s11") for B_brep in B_breps]
 			boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 			if boolean_result:
 				c = [rs.CopyObject(x) for x in boolean_result]
@@ -230,13 +230,11 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 			else: 
 				new_level_terrain_section_breps.append(rs.CopyObject(A_brep))
 			print new_level_terrain_section_breps
-			rs.ObjectLayer(A_brep,"out_srfs")
 			rs.DeleteObjects(A_brep)
-			[rs.ObjectLayer(B_brep,"out_srfs") for B_brep in B_breps]
-			
-		rs.DeleteObjects(B_breps)
+			rs.DeleteObjects(B_breps)
+		rs.DeleteObjects(B_breps) #possibly not needed
 		rs.DeleteObjects(boolean_result)
-		rs.ObjectLayer(new_level_terrain_section_breps,"s3")
+#		rs.ObjectLayer(new_level_terrain_section_breps,"s3")
 		new_terrain_section_breps.append(new_level_terrain_section_breps)
 		print "done pass 1"
 	return new_terrain_section_breps
@@ -370,8 +368,6 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	#get planes for sectioning.
 	planes = get_section_planes(b_geo,THICKNESS)
 	
-	#[rs.AddPlaneSurface(x,10,10) for x in planes] #debug
-	
 	#get the section curves and the section srfs
 	rs.Redraw()
 	section_srfs = []
@@ -382,24 +378,19 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 			plane_sections = get_section(extruded_srf,plane)
 		else:
 			plane_sections = outline_crv
-		#current_level_srfs = [Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0] for crv in plane_sections] #debug
 		###DEBUG STARTS####
 		current_level_srfs = []
 		for crv in plane_sections:
 			closed = crv.IsClosed
-			#force close if necessary
 			if not closed:
-#				doc.Objects.Add(crv)
 				dist = rs.Distance(crv.PointAtStart, crv.PointAtEnd)
 				res = crv.MakeClosed(dist*2)
 				join_dist = dist if dist > join_dist else join_dist
 				if res == False: return 0
-#			doc.Objects.Add(crv)
 			new_brep = Rhino.Geometry.Brep.CreatePlanarBreps(crv)[0]
 			current_level_srfs.append(new_brep)
 			new_brep_added = doc.Objects.AddBrep(new_brep)
-#			new_brep_added = rs.AddPlanarSrf([new_brep])
-			rs.ObjectLayer(new_brep_added,"s15")
+#			rs.ObjectLayer(new_brep_added,"s15")
 		###DEBUG ENDS###
 		section_srfs.append(current_level_srfs)
 	rs.DeleteObject(extruded_srf_id)
@@ -423,6 +414,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	get_building_footprints(building_breps,planes)
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
 	if bldg_subtraction_breps: extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
+	[rs.DeleteObjects(x) for x in bldg_subtraction_breps] #purge the building breps
 	
 	num_divisions = len(section_srfs)
 	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
@@ -440,24 +432,19 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 					B_breps.append(rs.ExtrudeSurface(B_srf,LONG_GUIDE))
 				#truncate the B_breps
 				if BORDER_BOOL: B_breps = [cut_frame_from_brep(b,frame_brep) for b in B_breps]
-				rs.ObjectLayer(B_breps,"s6")
+#				rs.ObjectLayer(B_breps,"s6")
 				boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 				rs.DeleteObjects(B_breps)
 				if boolean_result:
 					final_brep = boolean_result
 				else:
 					final_brep = [A_brep]
-				rs.ObjectLayer(final_brep,"s11")
+#				rs.ObjectLayer(final_brep,"s11")
 				final_level_breps.extend(final_brep)
 		else:
-			rs.ObjectLayer(A_brep,"s11")
+#			rs.ObjectLayer(A_brep,"s11")
 			final_level_breps.extend(brep_level)
 		final_breps.append(final_level_breps)
-	
-	#debug
-	for a in final_breps:
-		for b in a:
-			rs.ObjectLayer(b,"s12")
 	
 	#get the final surfaces by iterating through the final section breps and extracting the top faces.
 	final_srfs = []
@@ -466,7 +453,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		for brep in breplevel:
 			xsrf = wge.get_extreme_srf(rs.coercebrep(brep),5)
 			final_srfs_level.append(doc.Objects.Add(xsrf[0].DuplicateFace(False))) #must properly type the faces
-		rs.ObjectLayer(final_srfs_level,"s4")
+#		rs.ObjectLayer(final_srfs_level,"s4")
 		final_srfs.append(final_srfs_level)
 	
 	#project etching layers to final srfs	
@@ -521,7 +508,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		if i>0:
 			cp_guide = rs.CurvePlane(guide_curves[i][0])
 			rs.MoveObjects(guide_curves[i],[0,movement_range[i-1],-cp_guide.OriginZ])
-		
+	
 	
 	rs.Redraw()
 	main_curves = [item for sublist in main_curves for item in sublist]
