@@ -228,21 +228,6 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 				rs.DeleteObjects(boolean_result)
 				new_level_terrain_section_breps.extend(c)
 			else: 
-#surface deletion bug her
-#				#check if the boolean failed because the terrain brep is fully contained in the building brep.
-#				#otherwise, treat this as a failure and append the unaltered terrain brep.
-#				if A_brep and B_breps:
-#					contained = False
-#					for B_brep in B_breps:
-#						bb_A = rs.BoundingBox(A_brep)
-#						bb_B = rs.BoundingBox(B_brep)
-#						x_containment = bb_A[0].X > bb_B[0].X and bb_A[1].X < bb_B[1].X
-#						y_containment = bb_A[0].Y > bb_B[0].Y and bb_A[3].Y < bb_B[3].Y
-#						z_containment = bb_A[0].Z > bb_B[0].Z and bb_A[4].Z < bb_B[4].Z
-#						if (x_containment and y_containment and z_containment):
-#							contained = True
-#					if not contained:
-#						new_level_terrain_section_breps.append(rs.CopyObject(A_brep))
 				new_level_terrain_section_breps.append(rs.CopyObject(A_brep))
 			print new_level_terrain_section_breps
 			rs.ObjectLayer(A_brep,"out_srfs")
