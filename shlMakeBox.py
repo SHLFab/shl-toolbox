@@ -1,8 +1,7 @@
 """
-SHL Architects 16-10-2018
-v1.1 Sean Lamb (Developer)
-- code for manual version is hacky; re-look...
-- global tracking still a mess; re-look...
+SHL Architects 20-12-2018
+v1.2 Sean Lamb (Developer)
+- edits for clarity; fixed global assignment.
 sel@shl.dk
 """
 
@@ -10,45 +9,41 @@ import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 
 import itertools
 
-#verify utility of this...
-T_IBOX = 5.5
-T_OBOX = 2
-J_LEN = 20
-LCUT_GAP = 5
-TICK_DIST = 10
-
-#tolerances
-TOL_INSIDE = 2.5
-TOL_LID_ABSOLUTE = 0.4##mm to shave off each dimension in the lid
-TOL_RABET = 1
-
-#key locations
-ORIGIN_IB = [0,0,0]
-ORIGIN_OB = [0,100,0]
-
+import shl_toolbox_lib.layers as wla
+reload(wla)
 
 def setGlobals():
-	#mm
+	#mm.
+	#default vals
 	global T_IBOX,T_OBOX,J_LEN,LCUT_GAP,TICK_DIST
-	global TOL_INSIDE,TOL_LID_ABSOLUTE,TOL_RABET
-	global ORIGIN_IB,ORIGIN_OB
-	T_IBOX = 5.5
-	T_OBOX = 2
-	J_LEN = 20
-	LCUT_GAP = 5
-	TICK_DIST = 10
+	global SELECT_GUIDS
+	
+	T_IBOX = 5.5 #inner box thickness (foamcore)
+	T_OBOX = 2 #outer box thickness (card)
+	J_LEN = 20 #joint length
+	LCUT_GAP = 5 #gap between lasercut curves
+	TICK_DIST = 10 #length of the guide ticks on the lid
 
 	#tolerances
-	TOL_INSIDE = 2.5
-	TOL_LID_ABSOLUTE = 0.7##mm to shave off each dimension in the lid
-	TOL_RABET = 1
-
+	global TOL_INSIDE,TOL_LID_ABSOLUTE
+	TOL_INSIDE = 2.5 #
+	TOL_LID_ABSOLUTE = 0.7 #mm to shave off each dimension in the lid
+	
 	#key locations
+	global ORIGIN_IB,ORIGIN_OB
 	ORIGIN_IB = [0,0,0]
 	ORIGIN_OB = [0,100,0]
+	
+	#
+	global LCUT_NAMES
+	lcut_inds = wla.get_lcut_layers()
+	LCUT_NAMES = wla.ind_to_name(lcut_inds)
+	
+	SELECT_GUIDS = []
 
 
 #GENERAL UTILITIES
@@ -134,16 +129,18 @@ def add_tickmarks(rect,len,offset):
 		return "ERROR"
 	pts = rs.SortPoints(pts)
 	# print pts
-
+	
 	t_0 = rs.CopyObject(pts[0],[offset,offset,0])
 	t_1 = rs.CopyObject(t_0,[len,0,0])
 	t_2 = rs.CopyObject(t_0,[0,len,0])
-
+	
 	tick = rs.AddPolyline([t_1,t_0,t_2])
 	rs.DeleteObjects([t_0,t_1,t_2])
 	tick_2 = rs.MirrorObject(tick,mirror_v[0],mirror_v[1],True)
 	ticks_3 = rs.MirrorObjects([tick,tick_2],mirror_h[0],mirror_h[1],True)
-	rs.ObjectLayer([tick,tick_2]+ticks_3,"XXX_LCUT_03-LSCORE")
+	rs.ObjectLayer([tick,tick_2]+ticks_3,LCUT_NAMES[3])
+	tick_list = [tick,tick_2]+ticks_3
+	return tick_list
 
 
 #make grips and return information for placing them
@@ -193,7 +190,8 @@ def add_logo(pt_base,W,H):
 	str_scale = str(scale_factor)
 	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
 	logo = rs.LastCreatedObjects()
-	rs.ObjectLayer(logo,"XXX_LCUT_04-ENGRAVE")
+	rs.ObjectLayer(logo,LCUT_NAMES[4])
+	SELECT_GUIDS.extend(logo)
 
 
 #deprecated
@@ -212,50 +210,51 @@ def add_logo_offcenter(pt_base,W,H):
 	#rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " _Enter _Enter", 0)
 	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
 	logo = rs.LastCreatedObjects()
-	rs.ObjectLayer(logo,"XXX_LCUT_04-ENGRAVE")
+	rs.ObjectLayer(logo,LCUT_NAMES[4])
 
 
 #box functions
-def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE, BOOL_RABET):
-	# print "rabet", BOOL_RABET
-
+def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE):
+	"""input:
+	bbdims float(w,l,h). l is longest dimension.
+	tol float: percentage "give" to have
+	T_IBOX: thickness in mm
+	T_OBOX: thickness in mm
+	TOL_INSIDE: additional absolute tolerance added to the inner dimension of the box
+	return: 
+	br: list of four points representing the bounding rectangle of the output.
+	"""
 	W = (1+tol) * bb_dims[0] + T_IBOX*2 + TOL_INSIDE*2
 	L = (1+tol) * bb_dims[1] + T_IBOX*2 + TOL_INSIDE*2
 	H = (1+tol) * bb_dims[2] + T_IBOX*2 + TOL_INSIDE*1 - 0.1*T_IBOX
-
-	if BOOL_RABET == True:
-		bottom = rs.AddRectangle(ORIGIN_IB,L,W)
-	else:
-		bottom = rs.AddRectangle(ORIGIN_IB,L-2,W-2)
-
+	
+	bottom = rs.AddRectangle(ORIGIN_IB,L-2,W-2)
+	
 	# top: overall dim - material + rabet - lid tolerance
-	# print L - T_IBOX*2 - TOL_LID_ABSOLUTE*2 + TOL_RABET*2
 	# print L - T_IBOX*2 - TOL_LID_ABSOLUTE*2
-	top = rs.AddRectangle( [0,W+LCUT_GAP,0], L - T_IBOX*2 - TOL_LID_ABSOLUTE*2 + TOL_RABET*2, W - T_IBOX*2 - TOL_LID_ABSOLUTE*2  + TOL_RABET*2)
-	if BOOL_RABET == True:
-		short_a = rs.AddRectangle([L+LCUT_GAP,0,0],W,H)
-		short_b = rs.AddRectangle([L+LCUT_GAP,H+LCUT_GAP,0],W,H)
-		long_a = rs.AddRectangle([L+W+LCUT_GAP*2,0,0],L,H)
-		long_b = rs.AddRectangle([L+W+LCUT_GAP*2,H+LCUT_GAP,0],L,H)
-	else:
-		short_a = rs.AddRectangle([L+LCUT_GAP, 0, 0], W - 2*T_IBOX, H - T_IBOX)
-		short_b = rs.AddRectangle([L+LCUT_GAP, H+LCUT_GAP - T_IBOX ,0], W - 2*T_IBOX, H - T_IBOX)
-		long_a = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, 0, 0], L, H - T_IBOX)
-		long_b = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, H + LCUT_GAP - T_IBOX,0], L, H - T_IBOX)
-
+	# print L - T_IBOX*2 - TOL_LID_ABSOLUTE*2
+	top = rs.AddRectangle( [0,W+LCUT_GAP,0], L - T_IBOX*2 - TOL_LID_ABSOLUTE*2, W - T_IBOX*2 - TOL_LID_ABSOLUTE*2)
+	
+	short_a = rs.AddRectangle([L+LCUT_GAP, 0, 0], W - 2*T_IBOX, H - T_IBOX)
+	short_b = rs.AddRectangle([L+LCUT_GAP, H+LCUT_GAP - T_IBOX ,0], W - 2*T_IBOX, H - T_IBOX)
+	long_a = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, 0, 0], L, H - T_IBOX)
+	long_b = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, H + LCUT_GAP - T_IBOX,0], L, H - T_IBOX)
+	
 	grip_data = make_grips(bb_dims[0],bb_dims[1])
 	desired_grip_gap = 130
 	if bb_dims[1] > desired_grip_gap*1.4:
 		grips = add_grips(top,grip_data,desired_grip_gap)
 	else:
 		grips = add_grips(top,grip_data,bb_dims[1]/20)
-	rs.ObjectLayer(grips,"XXX_LCUT_01-CUT")
-
+	rs.ObjectLayer(grips,LCUT_NAMES[1])
+	
 	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
-	rs.ObjectLayer(all_geo,"XXX_LCUT_01-CUT")
-
+	rs.ObjectLayer(all_geo,LCUT_NAMES[1])
+	
 	br = rs.BoundingBox(all_geo)[:4]
-
+	
+	SELECT_GUIDS.extend(all_geo)
+	SELECT_GUIDS.extend(grips)
 	return br
 
 
@@ -263,21 +262,24 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	"""input:
 		bbdims float(w,l,h). l is longest dimension.
 		tol float: percentage "give" to have
-		T_IBOX: thickness in mm"""
+		T_IBOX: thickness in mm
+		T_OBOX: thickness in mm
+		TOL_INSIDE: additional absolute tolerance added to the inner dimension of the box
+		ORIGIN_OB: origin point for placing the curves
+		return: 
+		br: list of four points representing the bounding rectangle of the output.
+		"""
 
-	W = (1+tol) * bb_dims[0] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2 + TOL_RABET*2
-	L = (1+tol) * bb_dims[1] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2 + TOL_RABET*2
-	H = (1+tol) * bb_dims[2] + T_IBOX*2 + T_OBOX*1 + TOL_INSIDE*1 + TOL_RABET*1#compensate for lid
+	W = (1+tol) * bb_dims[0] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
+	L = (1+tol) * bb_dims[1] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
+	H = (1+tol) * bb_dims[2] + T_IBOX*2 + T_OBOX*1 + TOL_INSIDE*1
 
 	dy = ORIGIN_OB[1] #amount to move everything up by
 
 	n_joins_W = get_num_joins(W,J_LEN)
 	n_joins_L = get_num_joins(L,J_LEN)
 	n_joins_H = get_num_joins(H,J_LEN)
-
-	# print n_joins_W
-	# print n_joins_L
-	# print n_joins_H
+	
 	#get bounding rectangles for each geometry. placeholder; this won't all be necessary
 	bottom = rs.AddRectangle(ORIGIN_OB, L ,W)
 	top = rs.AddRectangle([0,W+LCUT_GAP+dy,0], L, W)
@@ -285,7 +287,6 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	short_b = rs.AddRectangle([L+LCUT_GAP,H+LCUT_GAP+dy,0], W, H)
 	long_a = rs.AddRectangle([L+W+LCUT_GAP*2,dy,0], L, H)
 	long_b = rs.AddRectangle([L+W+LCUT_GAP*2,H+LCUT_GAP+dy,0], L, H)
-
 
 	tickmarks = add_tickmarks(top,TICK_DIST,T_OBOX+T_IBOX+TOL_LID_ABSOLUTE)
 	grip_data = make_grips(bb_dims[0],bb_dims[1])
@@ -296,7 +297,7 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	else:
 		grips = add_grips(top,grip_data,bb_dims[1]/20)
 
-	rs.ObjectLayer(grips,"XXX_LCUT_01-CUT")
+	rs.ObjectLayer(grips,LCUT_NAMES[1])
 
 	#turn sides into finger joins
 	sides_b = rs.ExplodeCurves(bottom)
@@ -318,36 +319,42 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
 
 	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
-
-	rs.ObjectLayer(sb+ss+sl+[top],"XXX_LCUT_01-CUT")
-	rs.CopyObjects(ss,[0,H+LCUT_GAP,0])
-	rs.CopyObjects(sl,[0,H+LCUT_GAP,0])
+	
+	final_crvs = sb+ss+sl+[top]
+	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
+	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
+	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
 
 	centerpt, _ = rs.CurveAreaCentroid(short_a)
 	add_logo(centerpt,W,H)
 
 	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
 	br = rs.BoundingBox(all_geo)[:4]
-
+	
 	rs.DeleteObjects(sides_b+sides_s+sides_l)
 	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
-
+	
+	SELECT_GUIDS.extend(final_crvs)
+	SELECT_GUIDS.extend(grips)
+	SELECT_GUIDS.extend(tickmarks)
 	return br
 
 
 def rc_shl_box():
+	#get stickies
+	default_inner_thickness = sticky["defaultInThickness"] if sticky.has_key("defaultInThickness") else 5.5
+	default_outer_thickness = sticky["defaultOutThickness"] if sticky.has_key("defaultOutThickness") else 2
+	
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
-	opt_inner = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
-	opt_outer = Rhino.Input.Custom.OptionDouble(2,0.2,1000)
-	# opt_rabet = Rhino.Input.Custom.OptionToggle(True,"Off","On")
-
-	go.SetCommandPrompt("Select breps to be boxed or press Enter for manual dimensioning")
-	# go.AddOptionToggle("RabetInnerBox", opt_rabet)
+	
+	opt_inner = Rhino.Input.Custom.OptionDouble(default_inner_thickness,0.2,1000)
+	opt_outer = Rhino.Input.Custom.OptionDouble(default_outer_thickness,0.2,1000)
+	
+	go.SetCommandPrompt("Select breps to be boxed or press Enter for manual dimensioning (Suggested: Inner 5.5, Outer 2)")
 	go.AddOptionDouble("InnerThickness", opt_inner)
 	go.AddOptionDouble("OuterThickness", opt_outer)
-
+	
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.AcceptEnterWhenDone(True)
@@ -382,86 +389,62 @@ def rc_shl_box():
 			continue
 		
 		break
-
 	
 	#set globals according to input
-	BOOL_RABET = False
 	T_IBOX = opt_inner.CurrentValue
 	T_OBOX = opt_outer.CurrentValue
-	if BOOL_RABET == False:
-		global TOL_RABET
-		TOL_RABET = 0
 	
-	l_index_cut = add_layer("XXX_LCUT_01-CUT",sd.Color.Red)
-	l_index_score = add_layer("XXX_LCUT_02-SCORE",sd.Color.Blue)
-	l_index_lscore = add_layer("XXX_LCUT_03-LSCORE",sd.Color.Lime)
-	l_index_engrave = add_layer("XXX_LCUT_04-ENGRAVE",sd.Color.Magenta)
-	doc.Layers[l_index_cut].Color = sd.Color.Red
-	doc.Layers[l_index_score].Color = sd.Color.Blue
-	doc.Layers[l_index_lscore].Color = sd.Color.Lime
-	doc.Layers[l_index_engrave].Color = sd.Color.Magenta
+	rs.EnableRedraw(False)
 	
 	if MANUAL == False:
-		#Get geometry and object lists
-		brep_obj_list = []
-		brep_geo_list = []
+		#Get dimensions from geometry and object lists
+		brep_obj_list = [] #not used but left in for reference
 		brep_ids_list = []
 		for i in xrange(go.ObjectCount):
 			b_obj = go.Object(i).Object()
 			brep_obj_list.append(b_obj)
-			#brep_geo_list.append(b_obj.CurveGeometry)
 			brep_ids_list.append(b_obj.Id)
 		
-		
 		bb = rs.BoundingBox(brep_ids_list)
-		if bb:
-			for i, point in enumerate(bb):
-				pass
 		
-		rs.EnableRedraw(False)
-		
-		bb_w = min([rs.Distance(bb[0],bb[1]),rs.Distance(bb[0],bb[3])])
-		bb_l = max([rs.Distance(bb[0],bb[1]),rs.Distance(bb[0],bb[3])])
+		bb_x = rs.Distance(bb[0],bb[1])
+		bb_y = rs.Distance(bb[0],bb[3])
 		bb_h = rs.Distance(bb[0],bb[4])
 		
-		br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE,BOOL_RABET)
-		
-		ORIGIN_OB = (0,rs.Distance(br[0],br[3]) + LCUT_GAP,0)
-		get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
-		
-		rs.UnselectAllObjects()
-		rs.Redraw()
-		rs.EnableRedraw(True)
 	else:
-		rs.EnableRedraw(False)
-		bb_w, bb_l,bb_h = [0,0,0]
-		result, dim = Rhino.Input.RhinoGet.GetNumber("X dimension?",True,200)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_w = dim
+		#get stickies
+		default_x = sticky["manualXDim"] if sticky.has_key("manualXDim") else 200
+		default_y = sticky["manualYDim"] if sticky.has_key("manualYDim") else 250
+		default_z = sticky["manualZDim"] if sticky.has_key("manualZDim") else 150
 		
-		result, dim = Rhino.Input.RhinoGet.GetNumber("Y dimension?",True,250)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_l = dim
+		#Get dimensions manually
+		result, bb_x = Rhino.Input.RhinoGet.GetNumber("X dimension?",True,default_x)
+		if result != Rhino.Commands.Result.Success: return result
 		
-		result, dim = Rhino.Input.RhinoGet.GetNumber("Z dimension?",True,200)
-		if result <> Rhino.Commands.Result.Success:
-			return result
-		else:
-			bb_h = dim
+		result, bb_y = Rhino.Input.RhinoGet.GetNumber("Y dimension?",True,default_y)
+		if result != Rhino.Commands.Result.Success: return result
 		
-		br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE,BOOL_RABET)
-		
-		ORIGIN_OB = (0,rs.Distance(br[0],br[3]) + LCUT_GAP,0)
-		get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
-		
-		rs.UnselectAllObjects()
-		rs.Redraw()
-		rs.EnableRedraw(True)
-		
+		result, bb_h = Rhino.Input.RhinoGet.GetNumber("Z dimension?",True,default_z)
+		if result != Rhino.Commands.Result.Success: return result
+	
+	bb_w = min(bb_x,bb_y)
+	bb_l = max(bb_x,bb_y)
+	
+	br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE)
+	ORIGIN_OB = (0,rs.Distance(br[0],br[3]) + LCUT_GAP,0)
+	get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
+	
+	#set stickies
+	sticky["defaultInThickness"] = T_IBOX
+	sticky["defaultOutThickness"] = T_OBOX
+	sticky["manualXDim"] = bb_x
+	sticky["manualYDim"] = bb_y
+	sticky["manualZDim"] = bb_h
+	
+	rs.UnselectAllObjects()
+	rs.SelectObjects(SELECT_GUIDS)
+	rs.Redraw()
+	rs.EnableRedraw(True)
 
 
 if __name__ == "__main__":

@@ -8,10 +8,11 @@ v1.1: option list selection bug fix
 
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 import rhinoscriptsyntax as rs
 import Rhino
 
-# __commandname__ = "shlLayer"
+__commandname__ = "shlLayer"
 
 def add_layer(name,color):
 	myLayer = name
@@ -33,14 +34,14 @@ def set_layer_plot_weight(layerInd,weight):
 
 def change_object_layers(guids,layName,copy):
 	if (not rs.IsLayer(layName)): add_layer(layName,sd.Color.White)
-	
+
 	if copy == True: guids = rs.CopyObjects(guids)
-	
+
 	[rs.ObjectLayer(id,layName) for id in guids]
 	[rs.ObjectPrintWidthSource(id,0) for id in guids]
 	[rs.ObjectPrintColorSource(id,0) for id in guids]
 	[rs.ObjectColorSource(id,0) for id in guids]
-	
+
 	return guids
 
 
@@ -69,16 +70,17 @@ def get_lcut_layers():
 
 
 def rc_layer_change():
+	#get stickies
+	default_layer_ind = sticky["defaultLayer"] if sticky.has_key("defaultLayer") else 1
+	default_opt_copy = sticky["defaultCopyOpt"] if sticky.has_key("defaultCopyOpt") else False
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
-
-	opt_copy = Rhino.Input.Custom.OptionToggle(False,"No","Yes")
+	opt_copy = Rhino.Input.Custom.OptionToggle(default_opt_copy,"No","Yes")
 
 	#Index is used for layer change.
 	list_vals = ["Guides","Cut","Score","LightScore","Engrave"]
-	list_index = 1
-	opt_list = go.AddOptionList("DestinationLayer",list_vals,list_index)
-	go.SetCommandPrompt("Select curves to move to layer")
+	opt_list = go.AddOptionList("DestinationLayer",list_vals,default_layer_ind)
+	go.SetCommandPrompt("Select curves to move to layer or press Enter to add lasercut layers to document")
 	go.AddOptionToggle("CopyCurves", opt_copy)
 	#go.AddOptionDouble("InnerThickness", opt_inner)
 
@@ -94,17 +96,20 @@ def rc_layer_change():
 
 	res = None
 	bHavePreselectedObjects = False
-
 	while True:
 		res = go.GetMultiple(1,0)
 
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
-			# print res
 			go.EnablePreSelect(False, True)
 			if go.OptionIndex() == opt_list:
-				list_index = go.Option().CurrentListOptionIndex
+				default_layer_ind = go.Option().CurrentListOptionIndex
 			continue
+
+		elif res == Rhino.Input.GetResult.Nothing:
+			MANUAL = True
+			get_lcut_layers()
+			return None
 
 		#If not correct
 		elif res != Rhino.Input.GetResult.Object:
@@ -116,19 +121,19 @@ def rc_layer_change():
 			continue
 
 		break
-
+	
 	#option results
-	DESTINATION_LAYER = list_vals[list_index]
+	DESTINATION_LAYER = list_vals[default_layer_ind]
 	COPY_ORIGINALS = opt_copy.CurrentValue
-
+	
 	get_lcut_layers()
-
+	
 	#selected curve objects
 	c_ids_list = []
 	for i in xrange(go.ObjectCount):
 		c_obj = go.Object(i).Object()
 		c_ids_list.append(c_obj.Id)
-
+	
 	switcher = {
 		0:"XXX_LCUT_00-GUIDES",
 		1:"XXX_LCUT_01-CUT",
@@ -137,7 +142,10 @@ def rc_layer_change():
 		4:"XXX_LCUT_04-ENGRAVE",
 		}
 
-	changed_crvs = change_object_layers(c_ids_list,switcher[list_index],COPY_ORIGINALS)
+	sticky["defaultLayer"] = default_layer_ind
+	sticky["defaultCopyOpt"] = COPY_ORIGINALS
+
+	changed_crvs = change_object_layers(c_ids_list,switcher[default_layer_ind],COPY_ORIGINALS)
 	rs.UnselectAllObjects()
 	rs.SelectObjects(changed_crvs)
 

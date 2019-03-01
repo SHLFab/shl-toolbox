@@ -191,6 +191,9 @@ def rc_get_tags(curves):
 		rs.ObjectLayer(id,"XXX_LCUT_03-LSCORE")
 	for id in dot_guids:
 		rs.ObjectLayer(id,"XXX_LCUT_00-GUIDES")
+	
+	if len(text_guids) > 0: [rs.SelectObjects(x) for x in text_guids]
+	if len(dot_guids) > 0: [rs.SelectObjects(x) for x in dot_guids]
 	sc.doc.Views.Redraw()
 
 
@@ -199,6 +202,8 @@ def RunCommand( is_interactive ):
 	crvs = get_input()
 	if isinstance(crvs,list):
 		rc_get_tags(crvs)
+	rs.EnableRedraw(True)
+	rs.Redraw()
 	return 0
 
-RunCommand(False)
+RunCommand(True)
