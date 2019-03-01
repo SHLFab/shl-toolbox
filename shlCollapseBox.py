@@ -21,9 +21,7 @@ def rc_collapse_box():
 	default_length = sc.sticky["length"] if sc.sticky.has_key("length") else 100
 	default_delete = sc.sticky["delete"] if sc.sticky.has_key("delete") else True
 	
-	opt_delete = Rhino.Input.Custom.OptionToggle(default_delete,"No","Yes")
 	go.SetCommandPrompt("Select Breps")
-	go.AddOptionToggle("DeleteInput", opt_delete)
 
 	go.GroupSelect = True
 	go.SubObjectSelect = False

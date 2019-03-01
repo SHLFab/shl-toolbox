@@ -13,7 +13,7 @@ from scriptcontext import sticky
 
 import itertools
 
-import shl_toolbox_lib_dev.layers as wla
+import shl_toolbox_lib.layers as wla
 reload(wla)
 
 def setGlobals():

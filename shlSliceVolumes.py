@@ -12,15 +12,15 @@ from scriptcontext import doc
 from scriptcontext import sticky
 import System
 
-import shl_toolbox_lib_dev.layers as wla
+import shl_toolbox_lib.layers as wla
 reload(wla)
-import shl_toolbox_lib_dev.util as wut
+import shl_toolbox_lib.util as wut
 reload(wut)
-import shl_toolbox_lib_dev.rhino_util as wru
+import shl_toolbox_lib.rhino_util as wru
 reload(wru)
-import shl_toolbox_lib_dev.geo as wge
+import shl_toolbox_lib.geo as wge
 reload(wge)
-import shl_toolbox_lib_dev.fab as wfa
+import shl_toolbox_lib.fab as wfa
 reload(wfa)
 
 import itertools

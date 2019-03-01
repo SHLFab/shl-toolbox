@@ -202,6 +202,8 @@ def RunCommand( is_interactive ):
 	crvs = get_input()
 	if isinstance(crvs,list):
 		rc_get_tags(crvs)
+	rs.EnableRedraw(True)
+	rs.Redraw()
 	return 0
 
 RunCommand(True)

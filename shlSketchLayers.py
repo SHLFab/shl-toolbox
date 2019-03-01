@@ -4,7 +4,7 @@ Sean Lamb (Developer)
 sel@shl.dk
 """
 import rhinoscriptsyntax as rs
-import shl_toolbox_lib_dev.util as wut
+import shl_toolbox_lib.util as wut
 reload(wut)
 
 num = rs.GetInteger("Enter number of layers")

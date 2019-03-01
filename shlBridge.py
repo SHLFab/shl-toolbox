@@ -578,7 +578,6 @@ def rc_Bridge():
 		default_segmentLength = sticky["defaultSegLength"] if (sticky.has_key("defaultSegLength") and sticky["defaultSegLength"] < crv_max_length) else crv_max_length/2
 		s = "What approximate length would you like to target? The maximum for these curves is {0:.2f}".format(crv_max_length)
 		rc, segment_length = Rhino.Input.RhinoGet.GetNumber(s, False, default_segmentLength, 0, crv_max_length)
-		Rhino.Input.RhinoGet.GetNumber(
 		if rc != Rhino.Commands.Result.Success:
 			return rc
 		m_addBridges(crv_obj_list,segment_length,False)

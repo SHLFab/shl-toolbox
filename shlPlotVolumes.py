@@ -13,15 +13,15 @@ from scriptcontext import doc, sticky
 import System
 
 import shl_toolbox_lib.layers as wla
-reload(wla)
+#reload(wla)
 import shl_toolbox_lib.util as wut
-reload(wut)
+#reload(wut)
 import shl_toolbox_lib.rhino_util as wru
-reload(wru)
+#reload(wru)
 import shl_toolbox_lib.geo as wge
-reload(wge)
+#reload(wge)
 import shl_toolbox_lib.fab as wfa
-reload(wfa)
+#reload(wfa)
 
 import itertools
 import random as rand
