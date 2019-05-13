@@ -2,7 +2,7 @@
 SHL Architects 16-10-2018
 v1.1 Sean Lamb (Developer)
 sel@shl.dk
--removed interactive
+-repo test
 """
 
 import Rhino
@@ -339,18 +339,18 @@ def m_manage_discons(crv_obj_list,cut_tol):
 		discon_list = get_discontinuities(crv_obj)
 		br_pts = retrieve_bridge_params(crv_obj,"lc_bridge_param")
 		new_br_pts = []
-		
+
 		segment_domains = build_consecutive_domains(discon_list)
 		#print segment_domains
-		
+
 		#search can be done better... much better
 		for br_p in br_pts:
 			#print "---"
 			#print "SEARCHING PT", br_p
 			new_br_p=br_p
-			
+
 			containment_index = get_domain_containment(br_p,cut_tol,segment_domains)
-			
+
 			if containment_index == -1:
 				#point can fit just fine into its segment, so bump it away from corner if necessary (function this?)
 				for dc_p in discon_list:
@@ -364,17 +364,17 @@ def m_manage_discons(crv_obj_list,cut_tol):
 				available_domain = get_closest_viable_domain(containment_index,segment_domains,cut_tol)
 				new_br_p = get_domain_mid(available_domain)
 			new_br_pts.append(new_br_p)
-		
+
 		write_bridge_params(crv_obj,"lc_bridge_param",new_br_pts)
 
 
 #a bit messy right now...
 def m_makeBridgeLines(crv_obj_list,cut_length):
-	
+
 	default_groupWithin = sticky["defaultGroupWithin"] if sticky.has_key("defaultGroupWithin") else False
 	default_groupBetween = sticky["defaultGroupBetween"] if sticky.has_key("defaultGroupBetween") else False
 	default_delete = sticky["defaultDelete"] if sticky.has_key("defaultDelete") else False
-	
+
 	go = Rhino.Input.Custom.GetOption()
 	opt_groupWithin = Rhino.Input.Custom.OptionToggle(default_groupWithin,"No","Yes")
 	opt_groupBetween = Rhino.Input.Custom.OptionToggle(default_groupBetween,"No","Yes")
@@ -484,15 +484,15 @@ def m_makeBridgeLines(crv_obj_list,cut_length):
 	rs.UnselectAllObjects()
 	rs.SelectObjects(fragment_guids)
 	sc.doc.Views.Redraw()
-	
+
 	sticky["defaultGroupWithin"] = opt_groupWithin.CurrentValue
-	sticky["defaultGroupBetween"] = opt_groupBetween.CurrentValue 
+	sticky["defaultGroupBetween"] = opt_groupBetween.CurrentValue
 	sticky["defaultDelete"] = opt_delete.CurrentValue
-	
+
 	if opt_delete.CurrentValue == True:
 		ids = [x.Id for x in crv_obj_list]
 		rs.DeleteObjects(ids)
-		
+
 
 
 
@@ -502,20 +502,20 @@ def rc_Bridge():
 	default_bridge_size = sticky["defaultSize"] if sticky.has_key("defaultSize") else 2
 	default_bridge_border = sticky["defaultBorder"] if sticky.has_key("defaultBorder") else 2
 	default_bynum_bool = sticky["defaultByNum"] if sticky.has_key("defaultByNum") else True
-	
+
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
 	go.GeometryAttributeFilter = Rhino.Input.Custom.GeometryAttributeFilter.ClosedCurve
-	
+
 	opt_bridge_size = Rhino.Input.Custom.OptionDouble(default_bridge_size,0.2,1000)
 	opt_bridge_border = Rhino.Input.Custom.OptionDouble(default_bridge_border,0.2,1000)
 	opt_by_num = Rhino.Input.Custom.OptionToggle(default_bynum_bool,"ByLength","ByNumber")
-	
+
 	go.SetCommandPrompt("Select Curves for Bridging")
 	go.AddOptionDouble("BridgeSize", opt_bridge_size)
 	go.AddOptionDouble("BridgeBorder", opt_bridge_border)
 	out_mode = go.AddOptionToggle("Mode",opt_by_num)
-	
+
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.AcceptEnterWhenDone(True)
@@ -525,34 +525,34 @@ def rc_Bridge():
 	go.GroupSelect = True
 	go.SubObjectSelect = False
 	go.DeselectAllBeforePostSelect = False
-	
+
 	res = None
 	bHavePreselectedObjects = False
-	
+
 	while True:
 		res = go.GetMultiple(1,0)
-	
+
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
 			# print res
 			go.EnablePreSelect(False, True)
 			continue
-	
+
 		#If not correct
 		elif res != Rhino.Input.GetResult.Object:
 			return Rhino.Commands.Result.Cancel
-	
+
 		if go.ObjectsWerePreselected:
 			bHavePreselectedObjects = True
 			go.EnablePreSelect(False, True)
 			continue
-	
+
 		break
-	
+
 	CUT_LENGTH = opt_bridge_size.CurrentValue
 	CUT_TOL = opt_bridge_border.CurrentValue
 	BY_NUM = opt_by_num.CurrentValue
-	
+
 	#get properties of objects
 	crv_max_length = 0
 	crv_obj_list = []
@@ -563,12 +563,12 @@ def rc_Bridge():
 			crv_max_length = c_obj.CurveGeometry.Domain.Mid
 		else:
 			crv_max_length = min(crv_max_length,c_obj.CurveGeometry.Domain.Mid)
-	
+
 
 	#add bridges by length or by number.
 	if BY_NUM == True:
 		default_segmentCount = sticky["defaultSegmentCount"] if sticky.has_key("defaultSegmentCount") else 2
-		
+
 		rc, segment_count = Rhino.Input.RhinoGet.GetInteger("Divide curves into how many segments?",True,default_segmentCount,2,500)
 		if rc != Rhino.Commands.Result.Success:
 			return rc
@@ -582,20 +582,20 @@ def rc_Bridge():
 			return rc
 		m_addBridges(crv_obj_list,segment_length,False)
 		sticky["defaultSegLen"] = segment_length
-		
-	
-	
+
+
+
 	#display the bridges and request options.
 	go = Rhino.Input.Custom.GetOption()
 	opt_bridge_size = Rhino.Input.Custom.OptionDouble(CUT_LENGTH,0.2,1000)
 	opt_bridge_border = Rhino.Input.Custom.OptionDouble(CUT_TOL,0.2,1000)
-	
+
 	go.SetCommandPrompt("Adjust Options. Enter to Continue.")
 	go.AddOptionDouble("BridgeSize", opt_bridge_size)
 	go.AddOptionDouble("BridgeBorder", opt_bridge_border)
 	go.AcceptEnterWhenDone(True)
 	go.AcceptNothing(True)
-	
+
 	#draw the preview.
 	buffer_distance = CUT_LENGTH+CUT_TOL
 	m_manage_discons(crv_obj_list, buffer_distance)
@@ -603,7 +603,7 @@ def rc_Bridge():
 	rs.Redraw()
 	while True:
 		res = go.Get()
-	
+
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
 			for layer_ind in preview_layers:
@@ -615,27 +615,27 @@ def rc_Bridge():
 			preview_layers = m_showBridges(crv_obj_list,CUT_LENGTH,CUT_TOL)
 			rs.Redraw()
 			continue
-	
+
 		#If not correct
 		elif res == Rhino.Input.GetResult.Nothing:
 			for layer_ind in preview_layers:
 				doc.ActiveDoc.Layers
 				Rhino.DocObjects.Tables.LayerTable.Purge(doc.ActiveDoc.Layers,layer_ind,True)
 			break
-	
+
 		for layer_ind in preview_layers:
 			doc.ActiveDoc.Layers
 			Rhino.DocObjects.Tables.LayerTable.Purge(doc.ActiveDoc.Layers,layer_ind,True)
 		return Rhino.Commands.Result.Failure
-	
+
 		break
-	
+
 	CUT_LENGTH = opt_bridge_size.CurrentValue
 	CUT_TOL = opt_bridge_border.CurrentValue
-	
+
 	#Request output options.
 	m_makeBridgeLines(crv_obj_list,CUT_LENGTH)
-	
+
 	sticky["defaultSize"] = CUT_LENGTH
 	sticky["defaultBorder"] = CUT_TOL
 	sticky["defaultByNum"] = BY_NUM
@@ -645,14 +645,14 @@ def rc_Bridge():
 #run commands.
 #deprecated but remain for debug.
 def rc_addBridges():
-	
+
 	#set getobject
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Curve
 	go.GeometryAttributeFilter = Rhino.Input.Custom.GeometryAttributeFilter.ClosedCurve
 	go.SetCommandPrompt( 'Select Bridging' )
 	go.GetMultiple(1,0)
-	
+
 	#get the list of curve objects and curve geometries
 	crv_obj_list = []
 	crv_geo_list = []
@@ -660,12 +660,12 @@ def rc_addBridges():
 		c_obj = go.Object(i).Object()
 		crv_obj_list.append(c_obj)
 		crv_geo_list.append(c_obj.CurveGeometry)
-	
+
 	segment_count = 0
 	result, segment_count = Rhino.Input.RhinoGet.GetInteger("Divide curves into how many segments?", False, segment_count)
 	if result <> Rhino.Commands.Result.Success:
 		return result
-	
+
 	for crv_obj, crv_geo in zip(crv_obj_list, crv_geo_list):
 		curve_params = crv_geo.DivideByCount(segment_count, True)
 		l_params = arr_to_list(curve_params)
