@@ -2,6 +2,7 @@
 SHL Architects 16-10-2018
 v1.3 Sean Lamb (Developer)
 sel@shl.dk
+test
 """
 
 import rhinoscriptsyntax as rs
@@ -35,7 +36,7 @@ def setGlobals():
 
 	global LCUT_INDICES
 	LCUT_INDICES = wla.get_lcut_layers()
-	
+
 	global GAP_SIZE
 	GAP_SIZE = 5
 
@@ -44,7 +45,7 @@ def setup_GetObject(g):
 	g.AcceptNothing(True)
 	g.EnableClearObjectsOnEntry(False)
 #	g.EnableUnselectObjectsOnExit(False)
-#	g.DeselectAllBeforePostSelect = False 
+#	g.DeselectAllBeforePostSelect = False
 	return
 
 
@@ -79,39 +80,39 @@ def process_floor(in_objects,floor_outline,outline_cut_height=None):
 		pt: lower-left reference point
 		bdims = bounding dims of this floor
 	"""
-	
+
 	#classify the inputs
 	in_crvs, in_breps = brep_or_crv(in_objects)
-	
+
 	#get list of crvs to project
 	brep_sections = []
 	for b in in_breps:
 		cut_height = wge.get_brep_height(b)/2
 		pcurves = wge.get_brep_plan_cut(rs.coercebrep(b),cut_height,D_TOL)
 		brep_sections.extend(pcurves)
-	
+
 	b_section_guids = wru.add_curves_to_layer(brep_sections,LCUT_INDICES[0])
 	in_crvs.extend(b_section_guids)
-	
-	
+
+
 	#get the outline brep curve
 	if not outline_cut_height: outline_cut_height = wge.get_brep_height(floor_outline)
 	floor_outline_crvs = wge.get_brep_plan_cut(rs.coercebrep(floor_outline),outline_cut_height,D_TOL)
 	floor_outline_crvs = wru.add_curves_to_layer(floor_outline_crvs,LCUT_INDICES[1])
-	
+
 	#get bounding info for the floor outline
 	bb = rs.BoundingBox(floor_outline)
 	corner = bb[0]
 	bdims = wge.get_bounding_dims(floor_outline)
 	proj_srf = rs.AddSrfPt([bb[0],bb[1],bb[2],bb[3]])
-	
+
 	internal_crvs = rs.ProjectCurveToSurface(in_crvs,proj_srf,[0,0,-1]) if in_crvs else []
 	offset_floor_crv = rs.ProjectCurveToSurface(floor_outline_crvs,proj_srf,[0,0,-1])
-	
+
 	#rs.DeleteObjects(in_crvs)
 	rs.DeleteObjects(floor_outline_crvs)
 	rs.DeleteObject(proj_srf)
-	
+
 	out_floor_crvs = rs.coercecurve(offset_floor_crv)
 	out_internal_crvs = [rs.coercecurve(x) for x in internal_crvs]
 	rs.DeleteObject(offset_floor_crv)
@@ -125,16 +126,16 @@ def get_plan_brep():
 	#1. Get plan surface
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-	
+
 	opt_thickness = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
-	
+
 	go.SetCommandPrompt("Select floorplate outline surface to extract plan cuts")
 	go.AddOptionDouble("FacadeThickness", opt_thickness)
-	
+
 	setup_GetObject(go)
-	
+
 	bHavePreselectedObjects = False
-	
+
 	while True:
 		res = go.Get()
 		if res == Rhino.Input.GetResult.Option:
@@ -147,69 +148,69 @@ def get_plan_brep():
 			go.EnablePreSelect(False, True)
 			continue
 		break
-	
+
 	#set globals
 	global THICKNESS
 	THICKNESS = opt_thickness.CurrentValue
-	
+
 	#Get brep representations of objects
 	if go.ObjectCount != 1:
 		return
 	envelope_guid = go.Object(0).Object().Id
-	
+
 	return envelope_guid
 
 
 def get_plane_and_projection_crvs(plane_num):
-		
+
 	plan_cut_heights = []
 	rs.UnselectAllObjects()
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-	
+
 	go.SetCommandPrompt("Floor %d: Select plane for floorplate cut. Command will use top surface. Press Enter if done" % plane_num)
 	setup_GetObject(go)
-	
+
 	res = go.Get()
 	if res != Rhino.Input.GetResult.Object:
 		print "nothing"
 		return None
 	else: print "something selected"
-	
+
 	#Get brep representations of objects
 	if go.ObjectCount != 1: return None
 	floorplate_brep_obj = go.Object(0).Object()
 	floorplate_brep = floorplate_brep_obj.Geometry
-	
+
 	bb = rs.BoundingBox(floorplate_brep)
 	plan_cut_height = bb[4].Z
-	
+
 	#C. get breps and curves to project
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
 	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % plane_num)
 	rs.UnselectObject(floorplate_brep_obj.Id)
-	
+
 	projection_guids = []
 	objects_selected = True
-	
+
 	res = go.GetMultiple(1,0)
 	if res != Rhino.Input.GetResult.Object:
 		print "nothing"
 		return plan_cut_height, []
-	
+
 	#Get geometry
 	for i in xrange(go.ObjectCount):
 		projection_guids.append(go.Object(i).Object().Id)
-	
+
 	return plan_cut_height, projection_guids
 
 
 def rc_get_inputs():
-	
+
 	envelope_brep_guid = get_plan_brep()
 	rs.LockObject(envelope_brep_guid)
-	
+
 	more_floors = True
 	count = 0
 	plan_heights = []
@@ -222,10 +223,10 @@ def rc_get_inputs():
 		except:
 			break
 		count += 1
-	
+
 	print plan_heights
 	print projection_guids
-	
+
 	if plan_heights:
 		return envelope_brep_guid, plan_heights, projection_guids
 	else:
@@ -233,12 +234,12 @@ def rc_get_inputs():
 
 
 def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
-	
+
 	bb = rs.BoundingBox(boundary_brep)
 	max_z = bb[4].Z
 	min_z = bb[0].Z
 	crv_list,layer_list,refpt_list,bdims_list = [[],[],[],[]]
-	
+
 	for i,guids in enumerate(floor_guids):
 		if not (min_z < cut_heights[i] < max_z): continue
 		outline_crv, internals, refpt, bdims = process_floor(guids,boundary_brep,cut_heights[i])
@@ -247,37 +248,37 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 		refpt_list.append(refpt)
 		bdims_list.append(bdims)
 	#...brep conversion may be necessary
-	
+
 	if len(crv_list) == 0:
 		print "Error: Cut planes do not intersect the envelope brep"
 		return None
-	
+
 	#set base for output.
 	xbase = 0
 	ybase = 0
 	#set the amount to move up from the bottom of the brep for cutting the lower outline.
 	#this should be replaced by a projection of the bottom face of the brep.
 	epsilon = D_TOL*2
-	
+
 	select_items = []
-	
+
 	increment = max(d.X for d in bdims_list) + GAP_SIZE*1
 	dplane_list = get_drawing_planes(bdims_list,rs.WorldXYPlane(),GAP_SIZE)
 	refplane_list = [rs.MovePlane(rs.WorldXYPlane(),pt) for pt in refpt_list]
-	
+
 	for i,floor in enumerate(crv_list):
 		t = Rhino.Geometry.Transform.ChangeBasis(dplane_list[i],refplane_list[i])
-		
+
 		for j,layer_crvs in enumerate(floor):
 			for c in layer_crvs:
 				c.Transform(t)
 			select_items.extend(wru.add_curves_to_layer(layer_crvs,layer_list[i][j]))
-		
+
 		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
 		td = rs.AddTextDot(str(i+1),labelpt)
 		rs.ObjectLayer(td,"XXX_LCUT_00-GUIDES")
 		select_items.append(td)
-	
+
 	rs.UnselectAllObjects()
 	rs.SelectObjects(select_items)
 	rs.Redraw()
@@ -286,18 +287,18 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 
 # RunCommand is the called when the user enters the command name in Rhino.
 def RunCommand( is_interactive ):
-	
+
 	setGlobals()
-	
+
 	try:
 		brep, plan_heights, projection_guids = rc_get_inputs()
 	except:
 		print "Error in input!"
 		return 0
-	
+
 	rc_cut_plan(brep,plan_heights,projection_guids,True)
-	
-	
+
+
 	return 0
 
 RunCommand(False)
