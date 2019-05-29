@@ -32,131 +32,6 @@ def get_preview_geometry(arr_curves):
 	return arr_preview_exploded + arr_preview_lines
 
 
-def outline_region():
-	
-	default_length = sc.sticky["length"] if sc.sticky.has_key("length") else 100
-	
-	#Get original curves and curves to extend
-	input_curves = rs.GetObjects("Select Curves", 4, False, True, True)
-	if not input_curves: return
-	
-	#Get length
-	extension_length = rs.GetInteger(message="Enter Extension Length",number=default_length)
-	if not extension_length:
-		rs.EnableRedraw(True)
-		print "No Extension Length entered."
-		return False
-
-	arr_preview_geom = get_preview_geometry(input_curves)
-	for indCrv in arr_preview_geom:
-		rs.ExtendCurveLength(indCrv,0,2,extension_length)
-	
-	rs.EnableRedraw(False)
-	#Get curveboolean and display it
-	region_was_created = True
-	rs.UnselectAllObjects()
-	rs.SelectObjects(arr_preview_geom)
-	# print Rhino.RhinoDoc.ActiveDoc
-	# print sc.doc.ActiveDoc
-	
-	rs.Command("_-CurveBoolean _AllRegions _Enter")
-	
-	pcurve_outline = rs.LastCreatedObjects()
-	
-	if isinstance(pcurve_outline,list):
-		preview_srf = rs.AddPlanarSrf(pcurve_outline)
-		rs.LockObjects(arr_preview_geom)
-		rs.LockObjects(preview_srf)
-	else:
-		region_was_created = False
-		rs.LockObjects(arr_preview_geom)
-		preview_srf = []
-
-	rs.EnableRedraw(True)
-	rs.Redraw()
-
-	#Set up input object
-	go = Rhino.Input.Custom.GetOption()
-	optint = Rhino.Input.Custom.OptionDouble(extension_length)
-
-	prompt = "Press Enter to accept"
-	warning = "Insufficient overlap length. "
-	s = prompt if region_was_created else warning+prompt
-	go.SetCommandPrompt(s)
-	go.AddOptionDouble("ExtensionLength", optint)
-	go.AcceptEnterWhenDone(True)
-	go.AcceptNothing(True)
-
-	#control flow: can distinguish between inserting an option, cancelling, and pressing enter
-	res = None
-	while True:
-		res = go.Get()
-		rs.EnableRedraw(False)
-		region_was_created = True
-
-		#If new option entered, redraw a possible result
-		if res == Rhino.Input.GetResult.Option:
-			#Delete old preview
-			rs.UnlockObjects(preview_srf)
-			rs.UnlockObjects(arr_preview_geom)
-			rs.DeleteObjects(preview_srf)
-			rs.DeleteObjects(arr_preview_geom)
-			if isinstance(pcurve_outline,list):
-				rs.DeleteObjects(pcurve_outline)
-			rs.SelectObjects(input_curves)
-
-			#Draw new preview
-			arr_preview_geom = get_preview_geometry(input_curves)
-			if not extension_length: return False
-
-			for indCrv in arr_preview_geom:
-				rs.ExtendCurveLength(indCrv,0,2,optint.CurrentValue)
-
-			rs.UnselectAllObjects()
-			rs.SelectObjects(arr_preview_geom)
-			rs.Command("_-CurveBoolean _AllRegions _Enter")
-			pcurve_outline = rs.LastCreatedObjects()
-
-			if isinstance(pcurve_outline,list):
-				preview_srf = rs.AddPlanarSrf(pcurve_outline)
-				rs.LockObjects(arr_preview_geom)
-				rs.LockObjects(preview_srf)
-			else:
-				rs.LockObjects(arr_preview_geom)
-				preview_srf = []
-				region_was_created = False
-			rs.EnableRedraw(True)
-
-			s = prompt if region_was_created else warning+prompt
-			go.SetCommandPrompt(s)
-
-			continue
-
-		#If accepted, leave loop
-		elif res == Rhino.Input.GetResult.Nothing:
-			break
-
-		#If cancelled, delete working geometry
-		elif res != Rhino.Input.GetResult.Option:
-			rs.UnlockObjects(preview_srf)
-			rs.UnlockObjects(arr_preview_geom)
-			rs.DeleteObjects(preview_srf)
-			rs.DeleteObjects(arr_preview_geom)
-			rs.DeleteObjects(pcurve_outline)
-			rs.EnableRedraw(True)
-			return Rhino.Commands.Result.Cancel
-	
-	sc.sticky["length"] = optint.CurrentValue
-	#Clean up if successful
-	rs.UnlockObjects(preview_srf)
-	rs.UnlockObjects(arr_preview_geom)
-	rs.DeleteObjects(preview_srf)
-	rs.DeleteObjects(arr_preview_geom)
-	if isinstance(pcurve_outline,list):
-		rs.SelectObjects(pcurve_outline)
-	rs.EnableRedraw(True)
-
-
 def outline_region2():
 	
 	
@@ -218,8 +93,6 @@ def outline_region2():
 	region_was_created = True
 	rs.UnselectAllObjects()
 	rs.SelectObjects(arr_preview_geom)
-	# print Rhino.RhinoDoc.ActiveDoc
-	# print sc.doc.ActiveDoc
 	
 	rs.Command("_-CurveBoolean _AllRegions _Enter")
 	
@@ -255,7 +128,7 @@ def outline_region2():
 		res = go.Get()
 		rs.EnableRedraw(False)
 		region_was_created = True
-
+		
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
 			#Delete old preview
@@ -266,19 +139,19 @@ def outline_region2():
 			if isinstance(pcurve_outline,list):
 				rs.DeleteObjects(pcurve_outline)
 			rs.SelectObjects(input_curves)
-
+			
 			#Draw new preview
 			arr_preview_geom = get_preview_geometry(input_curves)
 			if not extension_length: return False
-
+			
 			for indCrv in arr_preview_geom:
 				rs.ExtendCurveLength(indCrv,0,2,optint.CurrentValue)
-
+			
 			rs.UnselectAllObjects()
 			rs.SelectObjects(arr_preview_geom)
 			rs.Command("_-CurveBoolean _AllRegions _Enter")
 			pcurve_outline = rs.LastCreatedObjects()
-
+			
 			if isinstance(pcurve_outline,list):
 				preview_srf = rs.AddPlanarSrf(pcurve_outline)
 				rs.LockObjects(arr_preview_geom)
@@ -288,16 +161,16 @@ def outline_region2():
 				preview_srf = []
 				region_was_created = False
 			rs.EnableRedraw(True)
-
+			
 			s = prompt if region_was_created else warning+prompt
 			go.SetCommandPrompt(s)
-
+			
 			continue
 
 		#If accepted, leave loop
 		elif res == Rhino.Input.GetResult.Nothing:
 			break
-
+		
 		#If cancelled, delete working geometry
 		elif res != Rhino.Input.GetResult.Option:
 			rs.UnlockObjects(preview_srf)
@@ -325,7 +198,6 @@ def outline_region2():
 
 
 def RunCommand( is_interactive ):
-#	outline_region()
 	outline_region2()
 	return 0
 

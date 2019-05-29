@@ -113,5 +113,3 @@ def partition_objects_by_attr(objects,attribute,reverse_bool=False):
 		partitioned_list.append(filter(lambda x: getattr(x,attribute) == item, objects))
 
 	return partitioned_list
-#print number_to_letter(51)
-#print frange(0,22.2,11.1)

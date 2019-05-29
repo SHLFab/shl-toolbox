@@ -19,7 +19,7 @@ import random
 from collections import namedtuple
 
 
-def add_fab_tags(tag_points,tag_text,tag_size,text_justification=Rhino.Geometry.TextJustification.Center):
+def add_fab_tags(tag_points, tag_text, tag_size, text_justification=Rhino.Geometry.TextJustification.Center):
 	"""in:
 	tag_points: list of point3ds
 	tag_text: list of tag text
