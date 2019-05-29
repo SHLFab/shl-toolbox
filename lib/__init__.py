@@ -1,6 +1,6 @@
-"""help docstring"""
-#workshop_lib init
-
+#SHL toolbox lib initfile
 #SHL Architects
-#v0.11 Sean Lamb 2018-11-14
-#TODO: define an __all__
+#Sean Lamb 2018-11-14
+
+#Init file required to make Python treat this directory as a package
+#For information on python package init files see https://docs.python.org/3/tutorial/modules.html#packages
