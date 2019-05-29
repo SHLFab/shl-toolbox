@@ -1,9 +1,15 @@
+#SHL Architects
+#Sean Lamb 29-05-2019
+#sel@shl.dk
+
+#Example use of ws_lib package. Run in Rhino Python Interpreter.
+
 import System.Drawing as sd
 import rhinoscriptsyntax as rs
 
-import ws_lib.layers as wla
+import shl-toolbox.lib.layers as wla
 reload(wla)
-import ws_lib.rhino_util as wru
+import shl-toolbox.lib.rhino_util as wru
 reload(wru)
 
 wla.add_layer("t1",sd.Color.Aqua)
