@@ -28,7 +28,9 @@ text_justification (Rhino.Geometry.TextJustification): text justification
 ```python
 add_fab_tags([point1,point2, point3], ['wall_1','wall_2','ceiling_1'], 5)
 ```
+
 -------------------------------------
+
 
 ## lib.geo
 Functions dealing with modifying or extracting geometry information
@@ -263,13 +265,17 @@ inside=True (?): trim the inside if true, trim outside if false
 ## lib.layers
 Functions for layer modification and assignment
 
+
 -------------------------------------
+
 
 
 ## lib.rhino_util
 Rhino object utility functions (e.g. converting between RhinoCommon types)
 
+
 -------------------------------------
+
 
 ## lib.util
 General non-geometric utilities
