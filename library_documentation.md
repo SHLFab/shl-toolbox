@@ -3,7 +3,8 @@
 ## fab
 Functions for fabrication output
 
-#### add_fab_tags(tag_points, tag_text, tag_size, text_justification=Rhino.Geometry.TextJustification.Center):
+#### add_fab_tags
+`add_fab_tags(tag_points, tag_text, tag_size, text_justification=Rhino.Geometry.TextJustification.Center)`
 Adds fabrication labels as curves to a list of points.
 
 Parameters:
