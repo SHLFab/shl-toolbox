@@ -11,14 +11,18 @@ add_fab_tags(tag_points, tag_text, tag_size, text_justification=Rhino.Geometry.T
 ```
 Adds fabrication labels as curves to a list of points.
 
-Parameters:
-- tag_points: list of point3ds
-- tag_text: list of tag text
-- tag_size: size of text
-- text_justification: Rhino.Geometry.TextJustification.<option goes here>
+**Parameters:**
+```
+tag_points ([point, ...]): list of point3ds
+tag_text (str): list of tag text
+tag_size (int): size of text
+text_justification (Rhino.Geometry.TextJustification): text justification
+```
 
-Return Value:
-text_crv_guids: list of guids of the exploded curves making up the labels.
+**Returns:**
+```
+[guids]: list of guids of the exploded curves making up the labels.
+```
 
 Example:
 ```python
