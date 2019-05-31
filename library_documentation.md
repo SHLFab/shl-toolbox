@@ -21,8 +21,9 @@ Return Value:
 text_crv_guids: list of guids of the exploded curves making up the labels.
 
 Example:
+```python
 add_fab_tags([point1,point2, point3], ['wall_1','wall_2','ceiling_1'], 5)
-
+```
 -------------------------------------
 
 ## lib.geo
@@ -45,7 +46,7 @@ dims: a namedtuple with values X, Y, Z.
 ```
 get_brep_base_plane(brep)
 ```
-> Returns the xy plane at the brep BoundingBox's lower left corner
+Returns the xy plane at the brep BoundingBox's lower left corner
 
 ---
 #### get_brep_height
@@ -59,21 +60,22 @@ Returns the height of a brep's bounding box
 ```
 get_brep_plan_cut(brep,cut_height,tolerance)
 ```
-  Cut a brep through the XY plane at a certain height and return the section curves.
-  Note that this function will try to join the resulting section curves.
+Cut a brep through the XY plane at a certain height and return the section curves.
+Note that this function will try to join the resulting section curves.
 
-  Parameters:
-  brep: RhinoCommon brep object
-  cut_height: height relative to base of BoundingBox to section the brep
-  tolerance: tolerance for joining the resulting curves. Suggested: use document tolerance.
+Parameters:
+brep: RhinoCommon brep object
+cut_height: height relative to base of BoundingBox to section the brep
+tolerance: tolerance for joining the resulting curves. Suggested: use document tolerance.
 
-  Returns:
-  list of RhinoCommon polycurve Objects
+Returns:
+list of RhinoCommon polycurve Objects
 
-  Example usage:
-  h = get_brep_height(b)
-  section_crvs = get_brep_plan_cut(b,h/2,0.01)
-
+Example:
+```python
+h = get_brep_height(b)
+section_crvs = get_brep_plan_cut(b,h/2,0.01)
+```
 ---
 #### get_brep_plan_cut_use_plane
 ```
@@ -312,10 +314,11 @@ partition_objects_by_attr(objects,attribute,reverse_bool=False)
 		object[][]: list of lists of objects partitioned by the attribute.
 
     Example:
-    objects = [Object 1 {colour: blue}, Object 2 {colour: red}, Object 3 {colour: blue}, Object 4 {colour: blue}, Object 5 {colour: green}]
-    partitioned = partition_objects_by_attr(objects)
-
-    paritioned = [ [Object 1,Object 3,Object 4], [Object 5], [Object 2] ]
+```python
+objects = [Object 1 {colour: blue}, Object 2 {colour: red}, Object 3 {colour: blue}, Object 4 {colour: blue}, Object 5 {colour: green}]
+partitioned = partition_objects_by_attr(objects)
+paritioned = [ [Object 1,Object 3,Object 4], [Object 5], [Object 2] ]
+```
 
 ..........other stuff........
 
