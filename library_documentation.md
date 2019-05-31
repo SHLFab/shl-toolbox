@@ -2,7 +2,7 @@
 
 Short description of library here.
 
-## fab
+## lib.fab
 Functions for fabrication output
 
 #### add_fab_tags
@@ -25,7 +25,7 @@ add_fab_tags([point1,point2, point3], ['wall_1','wall_2','ceiling_1'], 5)
 
 -------------------------------------
 
-## geo
+## lib.geo
 Functions dealing with modifying or extracting geometry information
 
 #### get_bounding_dims
@@ -40,6 +40,7 @@ Parameters:
 Return Value:
 dims: a namedtuple with values X, Y, Z.
 
+---
 #### get_brep_base_plane
 ```
 get_brep_base_plane(brep)
@@ -52,6 +53,7 @@ get_brep_height(brep)
 ```
 Returns the height of a brep's bounding box
 
+---
 #### get_brep_plan_cut
 ```
 get_brep_plan_cut(brep,cut_height,tolerance)
@@ -71,6 +73,7 @@ get_brep_plan_cut(brep,cut_height,tolerance)
   h = get_brep_height(b)
   section_crvs = get_brep_plan_cut(b,h/2,0.01)
 
+---
 #### get_brep_plan_cut_use_plane
 ```
 get_brep_plan_cut_use_plane(brep,plane,tolerance)
@@ -80,6 +83,7 @@ get_brep_plan_cut_use_plane(brep,plane,tolerance)
 
   Usage similar to get_plan_cut
 
+---
 #### get_internal_angles
 ```
 get_internal_angles(pts)
@@ -92,12 +96,14 @@ get_internal_angles(pts)
   Returns:
   list of internal angles
 
+---
 #### make_pcurve_ccw
 ```
 make_pcurve_ccw(geo_polycurve):
 ```
 	Accepts a rhino geometry.polycurve object and makes it counter-clockwise. Returns None.\
 
+---
 #### get_interior_pt
 #### MUST REVIEW
 ```
@@ -112,6 +118,7 @@ get_interior_pt(g_curve,sample_distance,quality=10)
 
   Returns: point3d."""
 
+---
 #### get_polycurve_segment_points
 #### MUST REVIEW
 ```
@@ -121,6 +128,7 @@ get_polycurve_segment_points(g_polycurve)
 
     return [startpts,endpts,midpts]
 
+---
 #### get_extreme_srf
 ```
 get_extreme_srf(brep,h_tol,top=True)
@@ -143,6 +151,7 @@ get_extreme_srf(brep,h_tol,top=True)
   Returns:
   extreme_surfaces: ???
 
+---
 #### brepClosestPoint
 ```
 brepClosestPoint(b1,b2,precision)
@@ -159,6 +168,7 @@ brepClosestPoint(b1,b2,precision)
   Returns:
   pt1,pt2 : list of Point3ds closest to one-another on b1 and b2, respectively
 
+---
 #### multi_test_in_or_out
 #### MUST REVIEW
 ```
@@ -167,12 +177,14 @@ multi_test_in_or_out(test_crv, vols):
   tests midpoint of curve for containment inside one of several volumes.
   Returns True if point is inside at least one of the volumes, otherwise False
 
+---
 #### check_planar_curves_collision
 ```
 check_planar_curves_collision(crvs)
 ```
   curves must be planar, returns True if any two curves overlap
 
+---
 #### trim_boundary
 #### MUST REVIEW
 ```
@@ -197,17 +209,17 @@ trim_boundary(e_crvs,cb_crvs,tol,inside=True)
 
 -------------------------------------
 
-## layers
+## lib.layers
 Functions for layer modification and assignment
 -
 
 
-## rhino_util
+## lib.rhino_util
 Rhino object utility functions (e.g. converting between RhinoCommon types)
 
 -
 
-## util
+## lib.util
 General non-geometric utilities
 
 #### equidistant_hsv_color
@@ -222,6 +234,7 @@ equidistant_hsv_color(num,saturation)
    returns:
    colours: list of rgb colours as tuples.
 
+---
 #### frange
 ```
 frange(start,stop,step)
@@ -236,6 +249,7 @@ frange(start,stop,step)
   Returns:
 		list of floats
 
+---
 #### num_div
 ```
 num_div(num,divisor):
@@ -243,6 +257,7 @@ num_div(num,divisor):
 _TODO: REMOVE_
 	returns number of divisors. posibly not necessary w/ divmod"""
 
+---
 #### number_to_letter
 ```
 number_to_letter(num,start=0,upper=True,append=True)
@@ -259,24 +274,28 @@ number_to_letter(num,start=0,upper=True,append=True)
     Returns:
   		letter: character corresponding to number
 
+---
 #### dotprod
 ```
 dotprod(a,b)
 ```
   dot product for vectors represented as lists
 
+---
 #### xprod
 ```
 xprod(a,b)
 ```
   cross product for vectors represented as lists
 
+---
 #### innerangle
 ```
 innerangle(a,b,radians=False)
 ```
   inner angle of two vector3ds. Radians or degrees.
 
+---
 #### partition_objects_by_attr
 ```
 partition_objects_by_attr(objects,attribute,reverse_bool=False)
