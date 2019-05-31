@@ -45,8 +45,9 @@ dims: a namedtuple with values X, Y, Z.
 ```
 get_brep_base_plane(brep)
 ```
-Returns the xy plane at the brep BoundingBox's lower left corner
+> Returns the xy plane at the brep BoundingBox's lower left corner
 
+---
 #### get_brep_height
 ```
 get_brep_height(brep)
