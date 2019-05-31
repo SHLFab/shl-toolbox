@@ -28,8 +28,11 @@ add_fab_tags([point1,point2, point3], ['wall_1','wall_2','ceiling_1'], 5)
 ## geo
 Functions dealing with modifying or extracting geometry information
 
-### get_bounding_dims(brep):
-	Returns bounding box x,y,z dims for a brep or many breps
+#### get_bounding_dims
+```
+get_bounding_dims(brep)
+```
+Returns bounding box x,y,z dims for a brep or many breps
 
 Parameters:
 - brep: a brep (is it guid or not?)
@@ -37,14 +40,23 @@ Parameters:
 Return Value:
 dims: a namedtuple with values X, Y, Z.
 
-### get_brep_base_plane(brep):
+#### get_brep_base_plane
+```
+get_brep_base_plane(brep)
+```
 Returns the xy plane at the brep BoundingBox's lower left corner
 
-### get_brep_height(brep):
+#### get_brep_height
+```
+get_brep_height(brep)
+```
 Returns the height of a brep's bounding box
 
-### get_brep_plan_cut(brep,cut_height,tolerance):
-	Cut a brep through the XY plane at a certain height and return the section curves.
+#### get_brep_plan_cut
+```
+get_brep_plan_cut(brep,cut_height,tolerance)
+```
+  Cut a brep through the XY plane at a certain height and return the section curves.
   Note that this function will try to join the resulting section curves.
 
   Parameters:
@@ -59,13 +71,19 @@ Returns the height of a brep's bounding box
   h = get_brep_height(b)
   section_crvs = get_brep_plan_cut(b,h/2,0.01)
 
-### def get_brep_plan_cut_use_plane(brep,plane,tolerance):
+#### get_brep_plan_cut_use_plane
+```
+get_brep_plan_cut_use_plane(brep,plane,tolerance)
+```
   Cut a brep through a given plane and return the section curves.
   Note that this function will try to join the resulting section curves
 
   Usage similar to get_plan_cut
 
-### get_internal_angles(pts):
+#### get_internal_angles
+```
+get_internal_angles(pts)
+```
   Get the internal angles of a set of pts representing a counter-clockwise polyline.
 
   Parameters:
@@ -74,11 +92,17 @@ Returns the height of a brep's bounding box
   Returns:
   list of internal angles
 
-### def make_pcurve_ccw(geo_polycurve):
+#### make_pcurve_ccw
+```
+make_pcurve_ccw(geo_polycurve):
+```
 	Accepts a rhino geometry.polycurve object and makes it counter-clockwise. Returns None.\
 
-### get_interior_pt(g_curve,sample_distance,quality=10)
-### MUST REVIEW
+#### get_interior_pt
+#### MUST REVIEW
+```
+get_interior_pt(g_curve,sample_distance,quality=10)
+```
   get an interior point in the brep by brute-force
 
   Parameters:
@@ -88,13 +112,19 @@ Returns the height of a brep's bounding box
 
   Returns: point3d."""
 
-### get_polycurve_segment_points(g_polycurve):
-### MUST REVIEW
+#### get_polycurve_segment_points
+#### MUST REVIEW
+```
+get_polycurve_segment_points(g_polycurve)
+```
   	gets [startpts,endpts,midpts] list for each segment in RhinoCommon curve geometry
 
     return [startpts,endpts,midpts]
 
-### get_extreme_srf(brep,h_tol,top=True):
+#### get_extreme_srf
+```
+get_extreme_srf(brep,h_tol,top=True)
+```
   get the surface at the top or bottom of the brep.
   Algorithm:
 	1. pick n random pts on each surface, P
@@ -113,7 +143,10 @@ Returns the height of a brep's bounding box
   Returns:
   extreme_surfaces: ???
 
-### brepClosestPoint(b1,b2,precision):
+#### brepClosestPoint
+```
+brepClosestPoint(b1,b2,precision)
+```
   Obtain the closest points on two breps
   Algorithm:
   - Pick a random point p1_0 on b1, and get the point p2_0 closest to it on b2.
@@ -126,16 +159,25 @@ Returns the height of a brep's bounding box
   Returns:
   pt1,pt2 : list of Point3ds closest to one-another on b1 and b2, respectively
 
-### multi_test_in_or_out(test_crv, vols):
-### MUST REVIEW
+#### multi_test_in_or_out
+#### MUST REVIEW
+```
+multi_test_in_or_out(test_crv, vols):
+```
   tests midpoint of curve for containment inside one of several volumes.
   Returns True if point is inside at least one of the volumes, otherwise False
 
-### check_planar_curves_collision(crvs):
+#### check_planar_curves_collision
+```
+check_planar_curves_collision(crvs)
+```
   curves must be planar, returns True if any two curves overlap
 
-### trim_boundary(e_crvs,cb_crvs,tol,inside=True):
-### MUST REVIEW
+#### trim_boundary
+#### MUST REVIEW
+```
+trim_boundary(e_crvs,cb_crvs,tol,inside=True)
+```
   trim curves by closed boundary curves.
   NOTE: assumes redraw is turned off. assumes curves are planar.
   future versions to use projection method to avoid these assumptions.
@@ -168,7 +210,10 @@ Rhino object utility functions (e.g. converting between RhinoCommon types)
 ## util
 General non-geometric utilities
 
-### equidistant_hsv_color(num,saturation):
+#### equidistant_hsv_color
+```
+equidistant_hsv_color(num,saturation)
+```
 	"""returns tuple of colours with equidistantly spaced hue"""
    Parameters:
    num: number of colours
@@ -177,7 +222,10 @@ General non-geometric utilities
    returns:
    colours: list of rgb colours as tuples.
 
-### def frange(start,stop,step):
+#### frange
+```
+frange(start,stop,step)
+```
 	floating point range. output vals will not exceed the stop param.
 
   Parameters:
@@ -188,11 +236,17 @@ General non-geometric utilities
   Returns:
 		list of floats
 
-### num_div(num,divisor):
+#### num_div
+```
+num_div(num,divisor):
+```
 _TODO: REMOVE_
 	returns number of divisors. posibly not necessary w/ divmod"""
 
-### number_to_letter(num,start=0,upper=True,append=True):
+#### number_to_letter
+```
+number_to_letter(num,start=0,upper=True,append=True)
+```
   	convert int to uppercase letter. ***will wrap if out of alphabet bounds***
     DEV NOTES: still a bug in here for ~26
 
@@ -205,16 +259,28 @@ _TODO: REMOVE_
     Returns:
   		letter: character corresponding to number
 
-### dotprod(a,b):
+#### dotprod
+```
+dotprod(a,b)
+```
   dot product for vectors represented as lists
 
-### xprod(a,b)
+#### xprod
+```
+xprod(a,b)
+```
   cross product for vectors represented as lists
 
-### innerangle(a,b,radians=False):
+#### innerangle
+```
+innerangle(a,b,radians=False)
+```
   inner angle of two vector3ds. Radians or degrees.
 
-### partition_objects_by_attr(objects,attribute,reverse_bool=False):
+#### partition_objects_by_attr
+```
+partition_objects_by_attr(objects,attribute,reverse_bool=False)
+```
   split up a list of objects by the values of a certain attribute.
 
   Parameters:
