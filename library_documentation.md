@@ -126,16 +126,15 @@ Accepts a rhino geometry.polycurve object and makes it counter-clockwise. Return
 
 ---
 ### get_interior_pt
-### MUST REVIEW
 ```
 get_interior_pt(g_curve,sample_distance,quality=10)
 ```
-get an interior point in the brep by brute-force
+get an interior point in the brep by brute-force. jitters interior point by distance.
 
 **Parameters:**
 ```
 g_curve: curve geometry
-sample_distance: ???
+sample_distance: amount to jitter randomly placed point by
 quality=10: number of spots to try.
 ```
 
@@ -146,7 +145,6 @@ point: point3d
 
 ---
 ### get_polycurve_segment_points
-### MUST REVIEW
 ```
 get_polycurve_segment_points(g_polycurve)
 ```
@@ -159,7 +157,7 @@ g_polycurve (Rhino.Geometry.Polycurve): polycurve geometry
 
 **Returns:**
 ```
-[startpts,endpts,midpts]: ???
+[startpts,endpts,midpts] ([ [Point3d, ... ], [Point3d, ... ], [Point3d, ... ] ]: lists of start, end, and midpoints of each segment.
 ```
 
 ---
