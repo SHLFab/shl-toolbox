@@ -265,14 +265,195 @@ inside=True (?): trim the inside if true, trim outside if false
 ## lib.layers
 Functions for layer modification and assignment
 
+### add_layer
+```
+add_layer(name,color)
+```
+add a colored layer by name
+
+**Parameters:**
+```
+name (str): layer name
+color (System.Drawing.Color): color for layer
+```
+
+**Returns:**
+```
+layerInd (int): layer index
+```
+
+---
+
+### set_layer_color
+```
+set_layer_color(layerInd,color)
+```
+set the layer color
+
+**Parameters:**
+```
+layerInd (int): layer index
+color (System.Drawing.Color): color for layer
+```
+
+**Returns:**
+```
+None
+```
+
+---
+
+### set_layer_plot_weight
+```
+set_layer_plot_weight(layerInd,weight)
+```
+set the layer's plotweight
+
+**Parameters:**
+```
+layerInd (int): layer index
+weight (float): plotweight. -1 for NoPrint.
+```
+
+**Returns:**
+```
+None
+```
+
+---
+
+### change_object_layers
+```
+change_object_layers(guids,layName,copy=False)
+```
+change layer of objects
+
+**Parameters:**
+```
+guids ([guid, ...]): object GUIDs
+layName (str): layer name
+copy=False (bool): new objects on layer (or original objects with reassigned layer if copy==False)
+```
+
+**Returns:**
+```
+guids ([guid, ...]): the guids of the objects on the new layer (original objects if copy=False, new objects if copy=True)
+```
+
+---
+
+### get_layer_objects
+```
+get_layer_objects(*layers)
+```
+Get all of the objects on the layer. If layer does not exist, will get an empty list back
+
+**Parameters:**
+```
+*layers (str): layer name
+```
+
+**Returns:**
+```
+rhobjs ([rhobj, ...]): rhinocommon geometry objects
+```
+
+---
+
+### ind_to_name
+```
+ind_to_name(layer_indices)
+```
+convert a list of layer indices to layer names for use in rhinoscriptsyntax
+
+**Parameters:**
+```
+layer_indices ([int, ... ]): layer indices
+```
+
+**Returns:**
+```
+layer_names ([str, ... ]): layer names
+```
 
 -------------------------------------
-
-
 
 ## lib.rhino_util
 Rhino object utility functions (e.g. converting between RhinoCommon types)
 
+
+### extrusion_to_brep
+```
+extrusion_to_brep(extrusion)
+```
+convert a single extrusion geometry to a brep geometry if it has a brep form
+
+---
+
+### docobj_to_guid
+```
+docobj_to_guid(doc_input)
+```
+convert list of doc objects to list of guids. handles single objects as well and converts them to a single guid.
+
+---
+
+### add_curve_to_layer
+```
+add_curve_to_layer(curve,layer_index)
+```
+add a RhinoCommon curve object to a layer by layer index.
+
+---
+
+### add_brep_to_layer
+```
+add_brep_to_layer(brep,layer_index)
+```
+add a RhinoCommon brep object to a layer by layer index.
+
+---
+
+### add_curves_to_layer
+```
+add_curves_to_layer(curves_list,layer_index)
+```
+add a list of RhinoCommon curves to layer by layer index.
+
+---
+
+### polycurve_to_polyline
+```
+polycurve_to_polyline(g_polycurve,absolute_tolerance,angle_tolerance):
+```
+convert a polycurve to a polyline
+
+**Parameters:**
+```
+g_polycurve (RhinoCommon polycurve): curve in
+absolute_tolerance (float): maximum deviation from line midpoints to the curve. When in doubt use the document's model space absolute tolerance.
+absolute_tolerance (float): maximum deviation of the line directions. When in doubt use document's model space angle tolerance.
+```
+
+**Returns:**
+```
+g_polyline (RhinoCommon polyline): polyline object
+```
+
+### polylinecurve_to_polycurve
+```
+polycurve_to_polyline(g_polylinecurve):
+```
+convert a polylinecurve to a polycurve
+
+**Parameters:**
+```
+g_polycurve (RhinoCommon polylinecurve): polylinecurve geometry
+```
+
+**Returns:**
+```
+g_polyline (RhinoCommon polycurve): polycurve object
 
 -------------------------------------
 
