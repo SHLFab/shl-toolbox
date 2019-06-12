@@ -119,6 +119,7 @@ def outline_region2():
 	s = prompt if region_was_created else warning+prompt
 	go.SetCommandPrompt(s)
 	go.AddOptionDouble("ExtensionLength", optint)
+	go.AddOptionToggle("DeleteInput", opt_delete)
 	go.AcceptEnterWhenDone(True)
 	go.AcceptNothing(True)
 
