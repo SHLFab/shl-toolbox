@@ -32,7 +32,7 @@ def get_preview_geometry(arr_curves):
 	return arr_preview_exploded + arr_preview_lines
 
 
-def outline_region2():
+def outline_region():
 	
 	
 	go = Rhino.Input.Custom.GetObject()
@@ -133,10 +133,8 @@ def outline_region2():
 		#If new option entered, redraw a possible result
 		if res == Rhino.Input.GetResult.Option:
 			#Delete old preview
-			rs.UnlockObjects(preview_srf)
-			rs.UnlockObjects(arr_preview_geom)
-			rs.DeleteObjects(preview_srf)
-			rs.DeleteObjects(arr_preview_geom)
+			rs.UnlockObjects(preview_srf+arr_preview_geom)
+			rs.DeleteObjects(preview_srf+arr_preview_geom)
 			if isinstance(pcurve_outline,list):
 				rs.DeleteObjects(pcurve_outline)
 			rs.SelectObjects(input_curves)
@@ -199,7 +197,7 @@ def outline_region2():
 
 
 def RunCommand( is_interactive ):
-	outline_region2()
+	outline_region()
 	return 0
 
 RunCommand(True)
