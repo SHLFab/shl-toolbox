@@ -3,7 +3,6 @@ SHL Architects 16-10-2018
 v1.1 Sean Lamb (Developer)
 sel@shl.dk
 -repo test
--Pictures sean made a change
 """
 
 import Rhino
@@ -204,10 +203,10 @@ def get_closest_viable_domain(start_branch,domains,tolerance):
 			break
 
 		#handle filling. if all full, done.
-		if filled[first_branch[1]] < 1:
-			filled[first_branch[1]] += 1
-		if filled[second_branch[1]] < 1:
-			filled[second_branch[1]] += 1
+		if filled[first_branch[1]%len(domains)] < 1:
+			filled[first_branch[1]%len(domains)] += 1
+		if filled[second_branch[1]%len(domains)] < 1:
+			filled[second_branch[1]%len(domains)] += 1
 
 		if sum(filled) >= len(domains)-1:
 			return -1
@@ -215,8 +214,8 @@ def get_closest_viable_domain(start_branch,domains,tolerance):
 		#move along the tree
 		branch_L -= 1
 		branch_R += 1
-		branch_L_len += domain_len(domains[branch_L])
-		branch_R_len += domain_len(domains[branch_R])
+		branch_L_len += domain_len(domains[branch_L%len(domains)])
+		branch_R_len += domain_len(domains[branch_R%len(domains)])
 
 		#get a new info set.
 		branch_info = zip(range(2),[branch_L,branch_R],[branch_L_len,branch_R_len])
@@ -334,6 +333,8 @@ def m_showBridges(crv_obj_list,cut_length,cut_tol,debug_tagparams=False):
 
 
 def m_manage_discons(crv_obj_list,cut_tol):
+	
+	error_flag = False
 	crv_geo_list = [x.CurveGeometry for x in crv_obj_list]
 
 	for crv_obj, crv_geo in zip(crv_obj_list, crv_geo_list):
@@ -343,17 +344,17 @@ def m_manage_discons(crv_obj_list,cut_tol):
 
 		segment_domains = build_consecutive_domains(discon_list)
 		#print segment_domains
-
 		#search can be done better... much better
+		
 		for br_p in br_pts:
 			#print "---"
 			#print "SEARCHING PT", br_p
 			new_br_p=br_p
 
-			containment_index = get_domain_containment(br_p,cut_tol,segment_domains)
+			containment_index = get_domain_containment(br_p,cut_tol,segment_domains) #see if it is contained
 
 			if containment_index == -1:
-				#point can fit just fine into its segment, so bump it away from corner if necessary (function this?)
+				#bridge can fit just fine into its segment, so bump it away from corner if necessary (function this?)
 				for dc_p in discon_list:
 					if 0 < (br_p - dc_p) < cut_tol:
 						new_br_p = dc_p + cut_tol
@@ -362,10 +363,17 @@ def m_manage_discons(crv_obj_list,cut_tol):
 						new_br_p = dc_p - cut_tol
 						break
 			else:
+				#bridge can't fit so move it to the closest viable domain
 				available_domain = get_closest_viable_domain(containment_index,segment_domains,cut_tol)
-				new_br_p = get_domain_mid(available_domain)
+				print available_domain
+				if available_domain != -1:
+					new_br_p = get_domain_mid(available_domain)
+				else:
+					error_flag = True
 			new_br_pts.append(new_br_p)
-
+		
+		if error_flag:
+			print "There was a problem placing these bridges. Try reducing the bridge size."
 		write_bridge_params(crv_obj,"lc_bridge_param",new_br_pts)
 
 
