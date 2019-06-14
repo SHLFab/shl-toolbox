@@ -145,15 +145,16 @@ def add_tickmarks(rect,len,offset):
 
 #make slots and return information for placing them
 def make_slots(W,L):
-	g_W = 6	#20/L or 14/L
-	g_L = min(W/3,35)	#3dis
-
+	g_W = W
+	g_L = L
+	
 	grip = rs.AddRectangle([0,0,0],g_W,g_L)
 	c,_ = rs.CurveAreaCentroid(grip)
 	return [grip,c,g_W,g_L]
 
 #add slots with a specified gap between them
-def add_slots(rect,grip,gap):
+def add_slots(rect,grip,gap,y_offset=0):
+	#by default will be centered in Y.
 	g_crv = grip[0]
 	g_c = grip[1]
 	g_W = grip[2]
@@ -162,8 +163,8 @@ def add_slots(rect,grip,gap):
 	pr_L = rs.PointAdd(center,[gap/2,0,0])
 	pr_R = rs.PointAdd(center,[-gap/2,0,0])
 
-	pg_L = rs.PointAdd(g_c,[-g_W/2,0,0])
-	pg_R = rs.PointAdd(g_c,[g_W/2,0,0])
+	pg_L = rs.PointAdd(g_c,[-g_W/2,y_offset,0])
+	pg_R = rs.PointAdd(g_c,[g_W/2,y_offset,0])
 
 	lgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_L,pg_L))
 	rgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_R,pg_R))
@@ -171,6 +172,53 @@ def add_slots(rect,grip,gap):
 
 	return [lgrip,rgrip]
 
+def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
+	pts = [[0,0],
+		[0,length],
+		[side_thickness,length],
+		[side_thickness,notch_depth],
+		[side_thickness+material_thickness,notch_depth],
+		[side_thickness+material_thickness,length],
+		[side_thickness*2+material_thickness,length],
+		[side_thickness*2+material_thickness,0],
+		[0,0]
+		] 
+	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
+	return pl
+
+def make_end(height,length,material_thickness,notch_depth):
+	pts = [[0,0],
+		[0,height],
+		[length-notch_depth,height],
+		[length-notch_depth,height-material_thickness],
+		[length,height-material_thickness],
+		[length,material_thickness],
+		[length-notch_depth,material_thickness],
+		[length-notch_depth,0],
+		[0,0]
+		] 
+	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
+	return pl
+
+#add slots with a specified gap between them
+def add_slide_holders(rect,grip,gap,y_offset=0):
+	#by default will be centered in Y.
+	g_crv = grip[0]
+	g_c = grip[1]
+	g_W = grip[2]
+	center,_ = rs.CurveAreaCentroid(rect)
+
+	pr_L = rs.PointAdd(center,[gap/2,0,0])
+	pr_R = rs.PointAdd(center,[-gap/2,0,0])
+
+	pg_L = rs.PointAdd(g_c,[-g_W/2,y_offset,0])
+	pg_R = rs.PointAdd(g_c,[g_W/2,y_offset,0])
+
+	lgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_L,pg_L))
+	rgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_R,pg_R))
+	rs.DeleteObject(g_crv)
+
+	return [lgrip,rgrip]
 
 def add_logo(pt_base,W,H):
 
@@ -212,51 +260,6 @@ def add_logo_offcenter(pt_base,W,H):
 	rs.ObjectLayer(logo,LCUT_NAMES[4])
 
 
-#box functions
-def get_inner_box(bb_dims, tol, T_IBOX, TOL_INSIDE):
-	"""input:
-	bbdims float(w,l,h). l is longest dimension.
-	tol float: percentage "give" to have
-	T_IBOX: thickness in mm
-	T_OBOX: thickness in mm
-	TOL_INSIDE: additional absolute tolerance added to the inner dimension of the box
-	return: 
-	br: list of four points representing the bounding rectangle of the output.
-	"""
-	W = (1+tol) * bb_dims[0] + T_IBOX*2 + TOL_INSIDE*2
-	L = (1+tol) * bb_dims[1] + T_IBOX*2 + TOL_INSIDE*2
-	H = (1+tol) * bb_dims[2] + T_IBOX*2 + TOL_INSIDE*1 - 0.1*T_IBOX
-	
-	bottom = rs.AddRectangle(ORIGIN_IB,L-2,W-2)
-	
-	# top: overall dim - material + rabet - lid tolerance
-	# print L - T_IBOX*2 - TOL_LID_ABSOLUTE*2
-	# print L - T_IBOX*2 - TOL_LID_ABSOLUTE*2
-	top = rs.AddRectangle( [0,W+LCUT_GAP,0], L - T_IBOX*2 - TOL_LID_ABSOLUTE*2, W - T_IBOX*2 - TOL_LID_ABSOLUTE*2)
-	
-	short_a = rs.AddRectangle([L+LCUT_GAP, 0, 0], W - 2*T_IBOX, H - T_IBOX)
-	short_b = rs.AddRectangle([L+LCUT_GAP, H+LCUT_GAP - T_IBOX ,0], W - 2*T_IBOX, H - T_IBOX)
-	long_a = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, 0, 0], L, H - T_IBOX)
-	long_b = rs.AddRectangle([L+W+LCUT_GAP*2 - 2*T_IBOX, H + LCUT_GAP - T_IBOX,0], L, H - T_IBOX)
-	
-	grip_data = make_slots(bb_dims[0],bb_dims[1])
-	desired_grip_gap = 130
-	if bb_dims[1] > desired_grip_gap*1.4:
-		slots = add_slots(top,grip_data,desired_grip_gap)
-	else:
-		slots = add_slots(top,grip_data,bb_dims[1]/20)
-	rs.ObjectLayer(slots,LCUT_NAMES[1])
-	
-	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
-	rs.ObjectLayer(all_geo,LCUT_NAMES[1])
-	
-	br = rs.BoundingBox(all_geo)[:4]
-	
-	SELECT_GUIDS.extend(all_geo)
-	SELECT_GUIDS.extend(slots)
-	return br
-
-
 def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	"""input:
 		bbdims float(w,l,h). l is longest dimension.
@@ -268,7 +271,10 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 		return: 
 		br: list of four points representing the bounding rectangle of the output.
 		"""
-
+	
+	#TEMP CONSTANTS FOR DEBUG TO BE GLOBAL LATER:
+	D_LID_NOTCH = 40
+	D_HOLDER_OUTER = 8
 	W = (1+tol) * bb_dims[0] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
 	L = (1+tol) * bb_dims[1] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
 	H = (1+tol) * bb_dims[2] + T_IBOX*2 + T_OBOX*1 + TOL_INSIDE*1
@@ -288,16 +294,23 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	long_b = rs.AddRectangle([L+W+LCUT_GAP*2,H+LCUT_GAP+dy,0], L, H)
 
 	tickmarks = add_tickmarks(top,TICK_DIST,T_OBOX+T_IBOX+TOL_LID_ABSOLUTE)
-	grip_data = make_slots(bb_dims[0],bb_dims[1])
-
-	desired_grip_gap = 130
-	if bb_dims[1] > desired_grip_gap*1.4:
-		slots = add_slots(top,grip_data,desired_grip_gap)
-	else:
-		slots = add_slots(top,grip_data,bb_dims[1]/20)
-
+	#add slots
+	s_W = T_OBOX #slot width is material thickness
+	s_L = H - T_OBOX*2 #- D_LID_NOTCH
+	slot_data = make_slots(s_W,s_L)
+	desired_slot_gap = L - D_HOLDER_OUTER*2 - T_OBOX*4
+	#may add a conditional here to manage making tiny boxes... see orig code
+	
+	
+#	make_slide_holder(side_thickness,length,material_thickness,notch_depth):
+#	add_slide_holders(rect,grip,gap,y_offset=0):
+	make_slide_holder(8,W-T_OBOX*2,T_OBOX,40)
+	slots = add_slots(long_a,slot_data,desired_slot_gap)
+	
+	make_end(H-T_OBOX*2,W-T_OBOX,T_OBOX,40)
+#	add_fingerhole
 	rs.ObjectLayer(slots,LCUT_NAMES[1])
-
+	
 	#turn sides into finger joins
 	sides_b = rs.ExplodeCurves(bottom)
 	jb_0 = make_join(sides_b[0],n_joins_L,0,T_OBOX,True,True)
@@ -314,9 +327,11 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	sides_l = rs.ExplodeCurves(long_a)
 	jl_0 = make_join(sides_l[0],n_joins_L,0,T_OBOX,False,True)
 	jl_2 = rs.ExtendCurveLength(rs.CopyObject(sides_l[2]),0,2,-T_OBOX)
-	jl_1 = make_join(sides_l[1],n_joins_H,-T_OBOX,0,True,False)
-	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
-
+#	jl_1 = make_join(sides_l[1],n_joins_H,-T_OBOX,0,True,False)
+#	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
+	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
+	jl_3 = add_strap_notch(sides_l[3],-T_OBOX)
+	
 	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
 	
 	final_crvs = sb+ss+sl+[top]
@@ -393,7 +408,7 @@ def rc_shl_box():
 	T_IBOX = opt_inner.CurrentValue
 	T_OBOX = opt_outer.CurrentValue
 	
-	rs.EnableRedraw(False)
+#	rs.EnableRedraw(False)
 	
 	if MANUAL == False:
 		#Get dimensions from geometry and object lists
@@ -429,8 +444,8 @@ def rc_shl_box():
 	bb_w = min(bb_x,bb_y)
 	bb_l = max(bb_x,bb_y)
 	
-	br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE)
-	ORIGIN_OB = (0,rs.Distance(br[0],br[3]) + LCUT_GAP,0)
+	#br = get_inner_box((bb_w,bb_l,bb_h),0,T_IBOX,TOL_INSIDE)
+	ORIGIN_OB = (0,0,0)
 	get_outer_box((bb_w,bb_l,bb_h),0,T_IBOX,T_OBOX,TOL_INSIDE,ORIGIN_OB)
 	
 	#set stickies
@@ -444,6 +459,7 @@ def rc_shl_box():
 	rs.SelectObjects(SELECT_GUIDS)
 	rs.Redraw()
 	rs.EnableRedraw(True)
+
 
 
 if __name__ == "__main__":
