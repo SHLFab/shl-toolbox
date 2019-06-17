@@ -12,7 +12,7 @@ from scriptcontext import doc
 from scriptcontext import sticky
 
 import itertools
-
+import pprint
 import shl_toolbox_lib.layers as wla
 reload(wla)
 
@@ -260,6 +260,50 @@ def add_logo_offcenter(pt_base,W,H):
 	rs.ObjectLayer(logo,LCUT_NAMES[4])
 
 
+	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
+	jl_3 = add_strap_notch(sides_l[3],T_OBOX)
+
+def add_strap_notch(curve_id,dx=10):
+	"""add notch in curve for strap. assumes vertical line input."""
+	
+	strap_width = 20
+	descent_run = 5
+	fillet = 10
+	notch_base = fillet*2 + strap_width
+	
+	edge_length = rs.CurveLength(curve_id)
+	endpts = rs.SortPoints(rs.CurvePoints(curve_id),True,2) #priority to Y for sorting
+	start_pt = endpts[0]
+	print [start_pt.X , edge_length/2 - descent_run - strap_width/2]
+	
+	p0 = start_pt
+	p1 = rs.coerce2dpoint([start_pt.X , start_pt.Y + edge_length/2 - descent_run - strap_width/2])
+	p2 = rs.coerce2dpoint([start_pt.X + dx, start_pt.Y + edge_length/2 - strap_width/2])
+	p3 = rs.coerce2dpoint([start_pt.X + dx, start_pt.Y + edge_length/2])
+	
+	mirror_pts = [p3, rs.coerce2dpoint([p3.X + 10,p3.Y])]
+	pts = [p0,p1,p2,p3]
+	lines = []
+	for i in xrange(len(pts)-1):
+		lines.append(rs.AddLine(pts[i],pts[i+1]))
+	
+	fillet_info = []
+	fillet_crvs = []
+	for i in xrange(len(lines)-1):
+		fillet_info.append(rs.CurveFilletPoints(lines[i],lines[i+1],5))
+		fillet_crvs.append(rs.AddFilletCurve(lines[i],lines[i+1],5))
+
+	trimmed_lines = [rs.AddLine(p0,fillet_info[0][0]),
+						rs.AddLine(fillet_info[0][1],fillet_info[1][0]),
+						rs.AddLine(fillet_info[1][1],p3)]
+	rs.DeleteObjects(lines)
+	
+	crv = rs.JoinCurves(trimmed_lines + fillet_crvs,True)
+	crv.append(rs.MirrorObject(crv,mirror_pts[0],mirror_pts[1],True))
+	crv = rs.JoinCurves(crv,True)
+	
+	return crv
+
 def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	"""input:
 		bbdims float(w,l,h). l is longest dimension.
@@ -330,28 +374,30 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 #	jl_1 = make_join(sides_l[1],n_joins_H,-T_OBOX,0,True,False)
 #	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
 	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
-	jl_3 = add_strap_notch(sides_l[3],-T_OBOX)
+	jl_3 = add_strap_notch(sides_l[3],T_OBOX)
 	
-	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
 	
-	final_crvs = sb+ss+sl+[top]
-	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
-	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
-	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
-
-	centerpt, _ = rs.CurveAreaCentroid(short_a)
-	add_logo(centerpt,W,H)
-
-	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
-	br = rs.BoundingBox(all_geo)[:4]
 	
-	rs.DeleteObjects(sides_b+sides_s+sides_l)
-	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
-	
-	SELECT_GUIDS.extend(final_crvs)
-	SELECT_GUIDS.extend(slots)
-	SELECT_GUIDS.extend(tickmarks)
-	return br
+#	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
+#	
+#	final_crvs = sb+ss+sl+[top]
+#	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
+#	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
+#	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
+#
+#	centerpt, _ = rs.CurveAreaCentroid(short_a)
+#	add_logo(centerpt,W,H)
+#
+#	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
+#	br = rs.BoundingBox(all_geo)[:4]
+#	
+#	rs.DeleteObjects(sides_b+sides_s+sides_l)
+#	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
+#	
+#	SELECT_GUIDS.extend(final_crvs)
+#	SELECT_GUIDS.extend(slots)
+#	SELECT_GUIDS.extend(tickmarks)
+#	return br
 
 
 def rc_shl_box():
@@ -463,5 +509,8 @@ def rc_shl_box():
 
 
 if __name__ == "__main__":
-	setGlobals()
-	rc_shl_box()
+#	setGlobals()
+#	rc_shl_box()
+	line = rs.GetLine(1)
+	line = rs.AddLine(line[0],line[1])
+	add_strap_notch(line)
