@@ -30,8 +30,7 @@ def setGlobals():
 
 	#tolerances
 	global TOL_INSIDE,TOL_LID_ABSOLUTE
-	TOL_INSIDE = 2.5 #
-	TOL_LID_ABSOLUTE = 0.7 #mm to shave off each dimension in the lid
+	TOL_INSIDE = 0 #
 	
 	#key locations
 	global ORIGIN_IB,ORIGIN_OB
@@ -57,6 +56,10 @@ def flatten(lst):
 			result.append(element)
 	return result
 
+def chunks(lst, n):
+	"""Yield successive n-sized chunks from l."""
+	for i in xrange(0, len(lst), n):
+		yield lst[i:i + n]
 
 #RHINO UTILITIES
 def add_layer(name,color):
@@ -109,14 +112,49 @@ def make_join(edge,n_joins,dx,dy,inner,truncate):
 		v = rs.VectorScale(v,T_OBOX)
 		rs.MoveObject(pairs_ordered[-1],v)
 		rs.MoveObject(pairs_ordered[0],rs.VectorReverse(v))
-
-
+	
+	#get the point pairs corresponding to the outer pts of the rabbets
+	#determine if vertical or horizontal.
+#	test_pt_1 = 
+#	print "printing pline info"
+#	for p in pairs_o:
+#		print rs.coerce3dpoint(p[0]), rs.coerce3dpoint(p[1])
+	
+	rabbet_info = get_rabbet_info(pairs_o)
 	pl = rs.AddPolyline(pairs_ordered)
 	rs.DeleteObject(extrapt)
 	rs.DeleteObjects(outer_pts)
 	rs.DeleteObjects(inner_pts)
-	return pl
+	return pl,rabbet_info
 
+def get_rabbet_info(outer_pt_ids):
+	'''helper function for getting rabbet info from the outer pts of the joint polyline'''
+	epsilon = 0.01
+	pts = [[rs.coerce3dpoint(p[0]), rs.coerce3dpoint(p[1])] for p in outer_pt_ids]
+	
+	#determine if vertical or horizontal join
+	testpt1 = pts[0][0]
+	testpt2 = pts[0][1]
+	print "testpt1", testpt1
+	print "testpt2", testpt2
+	vertical = True if abs(testpt1.X - testpt2.X) < epsilon else False
+	print vertical
+	
+	startpts = []
+	lengths = []
+	for pair in pts:
+		if vertical:
+			sortedpts = sorted(pair,key=lambda point:point.Y)
+			startpts.append([0,sortedpts[0].Y,0])
+			lengths.append(sortedpts[1].Y-sortedpts[0].Y)
+		else:
+			sortedpts = sorted(pair,key=lambda point:point.X)
+			startpts.append([sortedpts[0].X,0,0])
+			lengths.append(sortedpts[1].X-sortedpts[0].X)
+	print startpts
+	print lengths
+	return [startpts,lengths]
+	
 
 def add_tickmarks(rect,len,offset):
 
@@ -152,7 +190,37 @@ def make_slots(W,L):
 	c,_ = rs.CurveAreaCentroid(grip)
 	return [grip,c,g_W,g_L]
 
-#add slots with a specified gap between them
+def make_slotjoints(rabbet_info,basept):
+	epsilon = 0.01
+	"in make_slotjoints"
+	
+	startpts = rabbet_info[0]
+	lengths = rabbet_info[1]
+	#determine if vertical or horizontal join
+	testpt1 = startpts[0]
+	testpt2 = startpts[1]
+	print "testpt1", testpt1
+	print "testpt2", testpt2
+	vertical = True if abs(testpt1[0] - testpt2[0]) < epsilon else False
+	
+	print T_OBOX
+	if vertical:
+		slots = []
+		for sp,length in zip(startpts,lengths):
+			sp = [sum(x) for x in zip(sp, basept)]
+			plane = rs.WorldXYPlane()
+			plane = rs.MovePlane(plane,sp)
+			slots.append(rs.AddRectangle(plane,T_OBOX,length))
+	else:
+		slots = []
+		for sp,length in zip(startpts,lengths):
+			sp = [sum(x) for x in zip(sp, basept)]
+			plane = rs.WorldXYPlane()
+			plane = rs.MovePlane(plane,sp)
+			slots.append(rs.AddRectangle(plane,length,T_OBOX))
+	return slots
+
+#add "door slots" with a specified gap between them (to re-purpose this)
 def add_slots(rect,grip,gap,y_offset=0):
 	#by default will be centered in Y.
 	g_crv = grip[0]
@@ -161,16 +229,16 @@ def add_slots(rect,grip,gap,y_offset=0):
 	center,_ = rs.CurveAreaCentroid(rect)
 
 	pr_L = rs.PointAdd(center,[gap/2,0,0])
-	pr_R = rs.PointAdd(center,[-gap/2,0,0])
+#	pr_R = rs.PointAdd(center,[-gap/2,0,0])
 
 	pg_L = rs.PointAdd(g_c,[-g_W/2,y_offset,0])
-	pg_R = rs.PointAdd(g_c,[g_W/2,y_offset,0])
+#	pg_R = rs.PointAdd(g_c,[g_W/2,y_offset,0])
 
 	lgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_L,pg_L))
-	rgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_R,pg_R))
+#	rgrip = rs.CopyObject(g_crv,rs.VectorCreate(pr_R,pg_R))
 	rs.DeleteObject(g_crv)
 
-	return [lgrip,rgrip]
+	return lgrip
 
 def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
 	pts = [[0,0],
@@ -186,7 +254,7 @@ def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
 	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
 	return pl
 
-def make_end(height,length,material_thickness,notch_depth):
+def make_lid(height,length,material_thickness,notch_depth):
 	pts = [[0,0],
 		[0,height],
 		[length-notch_depth,height],
@@ -199,6 +267,7 @@ def make_end(height,length,material_thickness,notch_depth):
 		] 
 	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
 	return pl
+
 
 #add slots with a specified gap between them
 def add_slide_holders(rect,grip,gap,y_offset=0):
@@ -240,36 +309,13 @@ def add_logo(pt_base,W,H):
 	rs.ObjectLayer(logo,LCUT_NAMES[4])
 	SELECT_GUIDS.extend(logo)
 
-
-#deprecated
-def add_logo_offcenter(pt_base,W,H):
-	"""deprecated"""
-	proportion = 0.25
-	scale_factor = W*(proportion)/40
-	if scale_factor*14*1.05 > H:
-		scale_factor = H*0.5/40
-
-	margin = max(W,H)*0.05+T_OBOX
-
-	str_file = r"O:\SHL\ModelshopCopenhagen\05_scripting\Resources\logo\shl_logo_40x13_hatch_block_centered"
-	str_pt = str(pt_base.X+margin) + "," + str(pt_base.Y+margin) + ",0"
-	str_scale = str(scale_factor)
-	#rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " _Enter _Enter", 0)
-	rs.Command("_-Insert _File=_Yes " + str_file + " _Block " + str_pt + " " + str_scale + " _Enter " , 0)
-	logo = rs.LastCreatedObjects()
-	rs.ObjectLayer(logo,LCUT_NAMES[4])
-
-
-	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
-	jl_3 = add_strap_notch(sides_l[3],T_OBOX)
-
 def add_strap_notch(curve_id,dx=10):
 	"""add notch in curve for strap. assumes vertical line input."""
 	
-	strap_width = 20
-	descent_run = 5
-	fillet = 10
-	notch_base = fillet*2 + strap_width
+	strap_width = 27
+	descent_run = 1.5
+	fillet_radius = 1.2
+	notch_base = 20 + strap_width
 	
 	edge_length = rs.CurveLength(curve_id)
 	endpts = rs.SortPoints(rs.CurvePoints(curve_id),True,2) #priority to Y for sorting
@@ -290,8 +336,8 @@ def add_strap_notch(curve_id,dx=10):
 	fillet_info = []
 	fillet_crvs = []
 	for i in xrange(len(lines)-1):
-		fillet_info.append(rs.CurveFilletPoints(lines[i],lines[i+1],5))
-		fillet_crvs.append(rs.AddFilletCurve(lines[i],lines[i+1],5))
+		fillet_info.append(rs.CurveFilletPoints(lines[i],lines[i+1],fillet_radius))
+		fillet_crvs.append(rs.AddFilletCurve(lines[i],lines[i+1],fillet_radius))
 
 	trimmed_lines = [rs.AddLine(p0,fillet_info[0][0]),
 						rs.AddLine(fillet_info[0][1],fillet_info[1][0]),
@@ -317,14 +363,16 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 		"""
 	
 	#TEMP CONSTANTS FOR DEBUG TO BE GLOBAL LATER:
+	
+	print "T_OBOX", T_OBOX
 	D_LID_NOTCH = 40
-	D_HOLDER_OUTER = 8
-	W = (1+tol) * bb_dims[0] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
-	L = (1+tol) * bb_dims[1] + T_IBOX*2 + T_OBOX*2 + TOL_INSIDE*2
-	H = (1+tol) * bb_dims[2] + T_IBOX*2 + T_OBOX*1 + TOL_INSIDE*1
-
+	D_HOLDER_OUTER = 6
+	W = (1+tol) * bb_dims[0] + T_OBOX*2 + TOL_INSIDE*2
+	L = (1+tol) * bb_dims[1] + T_OBOX*2 + TOL_INSIDE*2 + D_HOLDER_OUTER*3
+	H = (1+tol) * bb_dims[2] + T_OBOX*2 + TOL_INSIDE*2
+	
 	dy = ORIGIN_OB[1] #amount to move everything up by
-
+	
 	n_joins_W = get_num_joins(W,J_LEN)
 	n_joins_L = get_num_joins(L,J_LEN)
 	n_joins_H = get_num_joins(H,J_LEN)
@@ -337,68 +385,75 @@ def get_outer_box(bb_dims, tol, T_IBOX, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	long_a = rs.AddRectangle([L+W+LCUT_GAP*2,dy,0], L, H)
 	long_b = rs.AddRectangle([L+W+LCUT_GAP*2,H+LCUT_GAP+dy,0], L, H)
 
-	tickmarks = add_tickmarks(top,TICK_DIST,T_OBOX+T_IBOX+TOL_LID_ABSOLUTE)
 	#add slots
 	s_W = T_OBOX #slot width is material thickness
 	s_L = H - T_OBOX*2 #- D_LID_NOTCH
 	slot_data = make_slots(s_W,s_L)
-	desired_slot_gap = L - D_HOLDER_OUTER*2 - T_OBOX*4
+	desired_slot_gap = L - D_HOLDER_OUTER*2 - T_OBOX*2
+	
+	#make 
+	slot1 = add_slots(long_a,slot_data,desired_slot_gap)
+	
+	make_slide_holder(D_HOLDER_OUTER,W-T_OBOX*2,T_OBOX,40)
+	make_lid(H-T_OBOX*2,W-T_OBOX,T_OBOX,40)
 	#may add a conditional here to manage making tiny boxes... see orig code
-	
-	
-#	make_slide_holder(side_thickness,length,material_thickness,notch_depth):
-#	add_slide_holders(rect,grip,gap,y_offset=0):
-	make_slide_holder(8,W-T_OBOX*2,T_OBOX,40)
-	slots = add_slots(long_a,slot_data,desired_slot_gap)
-	
-	make_end(H-T_OBOX*2,W-T_OBOX,T_OBOX,40)
-#	add_fingerhole
-	rs.ObjectLayer(slots,LCUT_NAMES[1])
+	rs.ObjectLayer(slot1,LCUT_NAMES[1])
+#	rs.ObjectLayer(slot2,LCUT_NAMES[1])
 	
 	#turn sides into finger joins
 	sides_b = rs.ExplodeCurves(bottom)
-	jb_0 = make_join(sides_b[0],n_joins_L,0,T_OBOX,True,True)
-	jb_2 = make_join(sides_b[2],n_joins_L,0,-T_OBOX,True,True)
-	jb_1 = make_join(sides_b[1],n_joins_W,-T_OBOX,0,True,True)
-	jb_3 = make_join(sides_b[3],n_joins_W,T_OBOX,0,True,True)
+	jb_0, _ = make_join(sides_b[0],n_joins_L,0,T_OBOX,True,False)
+	jb_2, _ = make_join(sides_b[2],n_joins_L,0,-T_OBOX,True,False)
+	jb_1 = rs.ExtendCurveLength(sides_b[1],0,2,-T_OBOX)
+	jb_3 = rs.ExtendCurveLength(sides_b[3],0,2,-T_OBOX)
 
 	sides_s = rs.ExplodeCurves(short_a)
-	js_0 = make_join(sides_s[0],n_joins_W,0,T_OBOX,False,False)
-	js_2 = rs.CopyObject(sides_s[2])
-	js_1 = make_join(sides_s[1],n_joins_H,-T_OBOX,0,False,False)
-	js_3 = make_join(sides_s[3],n_joins_H,T_OBOX,0,False,False)
+	js_0, _ = make_join(sides_s[0],n_joins_W,0,T_OBOX,True,True)
+	js_2, rinfo_js2 = make_join(sides_s[2],n_joins_W,0,-T_OBOX,True,True)
+	js_1, rinfo_js1 = make_join(sides_s[1],n_joins_H,-T_OBOX,0,True,True)
+	js_3, _ = make_join(sides_s[3],n_joins_H,T_OBOX,0,True,True)
 
 	sides_l = rs.ExplodeCurves(long_a)
-	jl_0 = make_join(sides_l[0],n_joins_L,0,T_OBOX,False,True)
-	jl_2 = rs.ExtendCurveLength(rs.CopyObject(sides_l[2]),0,2,-T_OBOX)
-#	jl_1 = make_join(sides_l[1],n_joins_H,-T_OBOX,0,True,False)
-#	jl_3 = make_join(sides_l[3],n_joins_H,T_OBOX,0,True,False)
+	jl_0, _ = make_join(sides_l[0],n_joins_L,0,T_OBOX,False,True)
+	j1_0 = rs.ExtendCurveLength(jl_0,0,2,T_OBOX)
+	jl_2, _ = make_join(sides_l[2],n_joins_L,0,-T_OBOX,False,True)
+	j1_2 = rs.ExtendCurveLength(jl_2,0,2,T_OBOX)
 	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
 	jl_3 = add_strap_notch(sides_l[3],T_OBOX)
 	
+	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
 	
+	final_crvs = sb+ss+sl+[top]
+	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
+	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
+	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
 	
-#	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
-#	
-#	final_crvs = sb+ss+sl+[top]
-#	rs.ObjectLayer(sb+ss+sl+[top],LCUT_NAMES[1])
-#	final_crvs.extend(rs.CopyObjects(ss,[0,H+LCUT_GAP,0]))
-#	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
-#
+	#get rect slot for short end of box
+	short_end_offset = D_HOLDER_OUTER + T_OBOX
+	
+	slotjoint_location_long_a = [L+W+LCUT_GAP*2 + short_end_offset-T_OBOX,dy,0]
+	slotjoint_location_long_b = [L+W+LCUT_GAP*2 + short_end_offset-T_OBOX,H+LCUT_GAP+dy,0]
+	slotjoint_location_base = [-(L+LCUT_GAP),0,0]
+	
+	slots_short1 = make_slotjoints(rinfo_js1,slotjoint_location_long_a)
+	slots_short2 = make_slotjoints(rinfo_js1,slotjoint_location_long_b)
+	
+	slots_long = make_slotjoints(rinfo_js2,slotjoint_location_base)
+	slots_long = rs.MirrorObjects(slots_long,[0,0,0],[1,1,0])
+	rs.MoveObjects(slots_long,[short_end_offset,0,0])
 #	centerpt, _ = rs.CurveAreaCentroid(short_a)
 #	add_logo(centerpt,W,H)
 #
-#	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
-#	br = rs.BoundingBox(all_geo)[:4]
-#	
-#	rs.DeleteObjects(sides_b+sides_s+sides_l)
-#	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
-#	
-#	SELECT_GUIDS.extend(final_crvs)
-#	SELECT_GUIDS.extend(slots)
+	all_geo = [bottom,top,short_a,short_b,long_a,long_b]
+	br = rs.BoundingBox(all_geo)[:4]
+	
+	rs.DeleteObjects(sides_b+sides_s+sides_l)
+	rs.DeleteObjects([bottom,short_a,short_b,long_a,long_b])
+	
+	SELECT_GUIDS.extend(final_crvs)
+	SELECT_GUIDS.extend([slot1])
 #	SELECT_GUIDS.extend(tickmarks)
 #	return br
-
 
 def rc_shl_box():
 	#get stickies
@@ -451,6 +506,7 @@ def rc_shl_box():
 		break
 	
 	#set globals according to input
+	global T_OBOX
 	T_IBOX = opt_inner.CurrentValue
 	T_OBOX = opt_outer.CurrentValue
 	
@@ -509,8 +565,16 @@ def rc_shl_box():
 
 
 if __name__ == "__main__":
-#	setGlobals()
-#	rc_shl_box()
-	line = rs.GetLine(1)
-	line = rs.AddLine(line[0],line[1])
-	add_strap_notch(line)
+	setGlobals()
+	rc_shl_box()
+#
+#	c1 = rs.GetCurveObject("boundary1")
+#	c2 = rs.GetCurveObject("boundary2")
+#	c3 = rs.GetCurveObject("crv to extend")
+#	c1 = c1[0]
+#	c2 = c2[0]
+#	c3 = c3[0]
+#	rs.ExtendCurve(c3,0,2,[c1,c2])
+#	line = rs.GetLine(1)
+#	line = rs.AddLine(line[0],line[1])
+#	add_strap_notch(line)
