@@ -235,18 +235,23 @@ def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
 	return pl
 
 def make_lid(height,length,material_thickness,notch_depth):
-	pts = [[0,0],
-		[0,height],
-		[length-notch_depth,height],
-		[length-notch_depth,height-material_thickness],
-		[length,height-material_thickness],
-		[length,material_thickness],
-		[length-notch_depth,material_thickness],
-		[length-notch_depth,0],
-		[0,0]
-		] 
-	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
-	return pl
+	
+	chamfer = min([0.5*material_thickness,1.5])
+	pts = [[length/2,0],
+		[0,0],
+		[0,height-notch_depth-chamfer],
+		[chamfer,height-notch_depth],
+		[material_thickness,height-notch_depth],
+		[material_thickness,height-chamfer],
+		[material_thickness+chamfer,height],
+		[length/2,height]
+		]
+	profile1 = rs.AddPolyline(rs.coerce2dpointlist(pts))
+	profile2 = rs.MirrorObject(profile1,[length/2,0],[length/2,1],True)
+	outline = rs.JoinCurves([profile1,profile2],True)
+	
+	hole = rs.AddCircle(rs.coerce2dpoint([length/2, 50]), 12.5)
+	return [outline,hole]
 
 
 #add slots with a specified gap between them
@@ -269,6 +274,7 @@ def add_slide_holders(rect,grip,gap,y_offset=0):
 
 	return [lgrip,rgrip]
 
+
 def add_logo(pt_base,W,H):
 
 	#determine size based on the boxdim. try to do 80mm.
@@ -288,6 +294,7 @@ def add_logo(pt_base,W,H):
 	logo = rs.LastCreatedObjects()
 	rs.ObjectLayer(logo,LCUT_NAMES[4])
 	SELECT_GUIDS.extend(logo)
+
 
 def add_strap_notch(curve_id,dx=10):
 	"""add notch in curve for strap. assumes vertical line input."""
@@ -329,6 +336,7 @@ def add_strap_notch(curve_id,dx=10):
 	
 	return crv
 
+
 def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	"""input:
 		bbdims float(w,l,h). l is longest dimension.
@@ -359,29 +367,31 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	
 	#add slots
 	s_W = T_OBOX #slot width is material thickness
-	s_L = H - T_OBOX*2 #- D_LID_NOTCH
+	s_L = W - T_OBOX*2 #- D_LID_NOTCH
 	slot_data = make_slots(s_W,s_L)
 	desired_slot_gap = L - D_HOLDER_OUTER*2 - T_OBOX*2
 	
 	#make slot for lid. this will fail if making tiny boxes (smaller than reasonable size)
-	slot1 = add_slots(long_a,slot_data,desired_slot_gap)
+	slot1 = add_slots(bottom,slot_data,desired_slot_gap)
 	rs.ObjectLayer(slot1,LCUT_NAMES[1])
 	
 	#make and place lid and holders
-	lid = make_lid(H-T_OBOX*2,W-T_OBOX,T_OBOX,40)
-	rs.MoveObject(lid,[L+LCUT_GAP,H+LCUT_GAP+dy,0])
-	slide_holder1 = make_slide_holder(D_HOLDER_OUTER,W-T_OBOX*2,T_OBOX,40)
+	lid = make_lid(H-T_OBOX,W-T_OBOX*2,T_OBOX,40)
+	rs.MoveObjects(lid,[L+LCUT_GAP,H+LCUT_GAP+dy,0])
+	slide_holder1 = make_slide_holder(D_HOLDER_OUTER,H-T_OBOX*2,T_OBOX,40)
 	rs.MoveObject(slide_holder1,[L*2+W+LCUT_GAP*3,0,0])
 	slide_holder2 = rs.CopyObject(slide_holder1,[D_HOLDER_OUTER*2+T_OBOX+LCUT_GAP,0,0])
 	
 	
 	#turn sides into finger joins
 	sides_b = rs.ExplodeCurves(bottom)
-	jb_0, _ = make_join(sides_b[0],n_joins_L,0,T_OBOX,True,False)
-	jb_2, _ = make_join(sides_b[2],n_joins_L,0,-T_OBOX,True,False)
-	jb_1 = rs.ExtendCurveLength(sides_b[1],0,2,-T_OBOX)
-	jb_3 = rs.ExtendCurveLength(sides_b[3],0,2,-T_OBOX)
-
+	jb_0, _ = make_join(sides_b[0],n_joins_L,0,T_OBOX,False,True)
+	jb_0 = rs.ExtendCurveLength(jb_0,0,2,T_OBOX)
+	jb_2, _ = make_join(sides_b[2],n_joins_L,0,-T_OBOX,False,True)
+	jb_2 = rs.ExtendCurveLength(jb_2,0,2,T_OBOX)
+	jb_1 = add_strap_notch(sides_b[1],-T_OBOX)
+	jb_3 = add_strap_notch(sides_b[3],T_OBOX)
+	
 	sides_s = rs.ExplodeCurves(short_a)
 	js_0, _ = make_join(sides_s[0],n_joins_W,0,T_OBOX,True,True)
 	js_2, rinfo_js2 = make_join(sides_s[2],n_joins_W,0,-T_OBOX,True,True)
@@ -389,17 +399,19 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	js_3, _ = make_join(sides_s[3],n_joins_H,T_OBOX,0,True,True)
 
 	sides_l = rs.ExplodeCurves(long_a)
-	jl_0, _ = make_join(sides_l[0],n_joins_L,0,T_OBOX,False,True)
-	j1_0 = rs.ExtendCurveLength(jl_0,0,2,T_OBOX)
-	jl_2, _ = make_join(sides_l[2],n_joins_L,0,-T_OBOX,False,True)
-	j1_2 = rs.ExtendCurveLength(jl_2,0,2,T_OBOX)
-	jl_1 = add_strap_notch(sides_l[1],-T_OBOX)
-	jl_3 = add_strap_notch(sides_l[3],T_OBOX)
+	jl_0, _ = make_join(sides_l[0],n_joins_L,0,T_OBOX,True,False)
+#	j1_0 = rs.ExtendCurveLength(jl_0,0,2,T_OBOX)
+	jl_2, _ = make_join(sides_l[2],n_joins_L,0,-T_OBOX,True,False)
+#	j1_2 = rs.ExtendCurveLength(jl_2,0,2,T_OBOX)
+	jl_1 = sides_l[1]
+	rs.ExtendCurveLength(jl_1,0,2,-T_OBOX)
+	jl_3 = sides_l[3]
+	rs.ExtendCurveLength(jl_3,0,2,-T_OBOX)
 	
 	sb,ss,sl = rs.JoinCurves([jb_0,jb_1,jb_2,jb_3],True), rs.JoinCurves([js_0,js_1,js_2,js_3],True), rs.JoinCurves([jl_0,jl_1,jl_2,jl_3],True)
 	
 	final_crvs = sb+ss+sl
-	rs.ObjectLayer(sb+ss+sl+[lid]+[slide_holder1,slide_holder2],LCUT_NAMES[1])
+	rs.ObjectLayer(sb+ss+sl+lid+[slide_holder1,slide_holder2],LCUT_NAMES[1])
 	final_crvs.extend(rs.CopyObjects(sl,[0,H+LCUT_GAP,0]))
 	
 	#get rect slot for short end of box
@@ -418,14 +430,14 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	rs.ObjectLayer(slots_short1+slots_short2+slots_long,LCUT_NAMES[1])
 	top = rs.CopyObjects(sb+slots_long,[0,W+LCUT_GAP+dy,0])
 	
-	centerpt = rs.coerce2dpoint([L/2,W*1.5 + LCUT_GAP])
+	centerpt = rs.coerce2dpoint([L + W/2 + LCUT_GAP, H/2])
 	add_logo(centerpt,W,H)
 	
 	final_crvs.extend(top)
 	final_crvs.extend(slots_long)
 	final_crvs.extend(slots_short1+slots_short2)
-	final_crvs.extend([slide_holder1,slide_holder2,lid])
-	all_geo = [bottom,short_a,lid,long_a,long_b,slide_holder1,slide_holder2]
+	final_crvs.extend([slide_holder1,slide_holder2,lid[0],lid[1]])
+	all_geo = [bottom,short_a,lid[0],lid[1],long_a,long_b,slide_holder1,slide_holder2]
 	br = rs.BoundingBox(all_geo)[:4]
 	
 	rs.DeleteObjects(sides_b+sides_s+sides_l)
