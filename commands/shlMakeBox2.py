@@ -25,18 +25,15 @@ def setGlobals():
 	T_OBOX = 2 #outer box thickness (card)
 	J_LEN = 20 #joint length
 	LCUT_GAP = 5 #gap between lasercut curves
-	TICK_DIST = 10 #length of the guide ticks on the lid
-
+	
 	#tolerances
 	global TOL_INSIDE,TOL_LID_ABSOLUTE
 	TOL_INSIDE = 0 #
 	
 	#key locations
-	global ORIGIN_IB,ORIGIN_OB
-	ORIGIN_IB = [0,0,0]
+	global ORIGIN_OB
 	ORIGIN_OB = [0,100,0]
 	
-	#
 	global LCUT_NAMES
 	lcut_inds = wla.get_lcut_layers()
 	LCUT_NAMES = wla.ind_to_name(lcut_inds)
@@ -55,12 +52,7 @@ def flatten(lst):
 			result.append(element)
 	return result
 
-def chunks(lst, n):
-	"""Yield successive n-sized chunks from l."""
-	for i in xrange(0, len(lst), n):
-		yield lst[i:i + n]
 
-#RHINO UTILITIES
 def add_layer(name,color):
 	myLayer = name
 	layerInd = doc.Layers.Find(myLayer,False)
@@ -76,6 +68,7 @@ def get_num_joins(dim,J_LEN):
 	if n_joins < 3:
 		n_joins = 3
 	return n_joins
+
 
 #MAIN FUNCTIONS
 #probably easier way to do truncate...
@@ -119,6 +112,7 @@ def make_join(edge,n_joins,dx,dy,inner,truncate):
 	rs.DeleteObjects(inner_pts)
 	return pl,rabbet_info
 
+
 def get_rabbet_info(outer_pt_ids):
 	'''helper function for getting rabbet info from the outer pts of the joint polyline'''
 	epsilon = 0.01
@@ -142,30 +136,6 @@ def get_rabbet_info(outer_pt_ids):
 			startpts.append([sortedpts[0].X,0,0])
 			lengths.append(sortedpts[1].X-sortedpts[0].X)
 	return [startpts,lengths]
-	
-
-def add_tickmarks(rect,len,offset):
-
-	c,_ = rs.CurveAreaCentroid(rect)
-	mirror_v = [c,rs.PointAdd(c,[0,10,0])]
-	mirror_h = [c,rs.PointAdd(c,[10,0,0])]
-
-	pts = rs.CurvePoints(rect)
-	if not pts:
-		return "ERROR"
-	pts = rs.SortPoints(pts)
-	
-	t_0 = rs.CopyObject(pts[0],[offset,offset,0])
-	t_1 = rs.CopyObject(t_0,[len,0,0])
-	t_2 = rs.CopyObject(t_0,[0,len,0])
-	
-	tick = rs.AddPolyline([t_1,t_0,t_2])
-	rs.DeleteObjects([t_0,t_1,t_2])
-	tick_2 = rs.MirrorObject(tick,mirror_v[0],mirror_v[1],True)
-	ticks_3 = rs.MirrorObjects([tick,tick_2],mirror_h[0],mirror_h[1],True)
-	rs.ObjectLayer([tick,tick_2]+ticks_3,LCUT_NAMES[3])
-	tick_list = [tick,tick_2]+ticks_3
-	return tick_list
 
 
 #make slots and return information for placing them
@@ -176,6 +146,7 @@ def make_slots(W,L):
 	grip = rs.AddRectangle([0,0,0],g_W,g_L)
 	c,_ = rs.CurveAreaCentroid(grip)
 	return [grip,c,g_W,g_L]
+
 
 def make_slotjoints(rabbet_info,basept):
 	epsilon = 0.01
@@ -220,6 +191,7 @@ def add_slots(rect,grip,gap,y_offset=0):
 
 	return lgrip
 
+
 def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
 	pts = [[0,0],
 		[0,length],
@@ -233,6 +205,7 @@ def make_slide_holder(side_thickness,length,material_thickness,notch_depth):
 		] 
 	pl = rs.AddPolyline(rs.coerce2dpointlist(pts))
 	return pl
+
 
 def make_lid(height,length,material_thickness,notch_depth):
 	
@@ -342,7 +315,7 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 		bbdims float(w,l,h). l is longest dimension.
 		tol float: percentage tolerance for internal vo
 		T_OBOX: thickness in mm
-		TOL_INSIDE: additional absolute tolerance added to the inner dimension of the box
+		TOL_INSIDE: additional absolute tolerance added to the inner dimension of the box (for example add 2.5mm to each side)
 		ORIGIN_OB: origin point for placing the curves
 		return: 
 		br: list of four points representing the bounding rectangle of the output.
@@ -400,9 +373,7 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 
 	sides_l = rs.ExplodeCurves(long_a)
 	jl_0, _ = make_join(sides_l[0],n_joins_L,0,T_OBOX,True,False)
-#	j1_0 = rs.ExtendCurveLength(jl_0,0,2,T_OBOX)
 	jl_2, _ = make_join(sides_l[2],n_joins_L,0,-T_OBOX,True,False)
-#	j1_2 = rs.ExtendCurveLength(jl_2,0,2,T_OBOX)
 	jl_1 = sides_l[1]
 	rs.ExtendCurveLength(jl_1,0,2,-T_OBOX)
 	jl_3 = sides_l[3]

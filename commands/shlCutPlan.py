@@ -48,6 +48,142 @@ def setup_GetObject(g):
 #	g.DeselectAllBeforePostSelect = False
 	return
 
+import rhinoscriptsyntax as rs
+import scriptcontext as sc
+import Rhino
+
+def TrimOutside(outline_crvs,exterior_crvs):
+	
+	outline_crvs = [c for c if rs.IsCurveClosed(crv)]
+	if len(closed_crvs) == 0 or len(exterior_crvs) == 0:
+		return None
+	
+	regions=rs.AddPlanarSrf(outline_crvs)
+	
+	extrude_guide = rs.AddLine([0,0,0],[0,0,10])
+	extruded_boundaries = []
+	for r in regions:
+		b=rs.ExtrudeSurface(srf,line,True)
+		if ext != None: vols.append(b)
+	rs.DeleteObjects(regions)
+	rs.DeleteObject(extrude_guide)
+	
+	
+def MultiTestInOrOut(testCrv, vols):
+    #tests midpoint of curve for containment inside one of several volumes
+    #returns True if point is inside at least one of the volumes, otherwise False
+    rc=False
+    dom=rs.CurveDomain(testCrv)
+    if dom==None:
+        #debug print "bad domain"
+        return
+    cmPt=rs.EvaluateCurve(testCrv,(dom[0]+dom[1])/2)
+    if cmPt==None:
+        #debug print "bad curve"
+        return
+    for vol in vols:
+        if rs.IsPointInSurface(vol,cmPt,True,sc.doc.ModelAbsoluteTolerance):
+            #curve is inside one of the volumes
+            rc=True
+            break
+    return rc
+    
+def CheckPlanarCurvesForCollision(crvs):
+    #curves must be planar, returns True if any two curves overlap
+    for i in range(len(crvs)-1):
+        for j in range(i+1,len(crvs)):
+            if rs.PlanarCurveCollision(crvs[i],crvs[j]): return True
+    return False
+
+def MultiNestedBoundaryTrimCurves():
+    msg="Select closed boundary curves for trimming"
+    TCrvs = rs.GetObjects(msg, 4, preselect=False)
+    if not TCrvs: return
+    
+    cCrvs=[crv for crv in TCrvs if rs.IsCurveClosed(crv)]
+    if len(cCrvs)==0:
+        print "No closed trim curves found"
+        return
+    rs.LockObjects(cCrvs)
+    
+    origCrvs = rs.GetObjects("Select curves to trim", 4)
+    rs.UnlockObjects(cCrvs)
+    if not origCrvs : return
+    
+    #plane which is active when trim curve is chosen
+    refPlane = rs.ViewCPlane()
+    
+
+    
+    if sc.sticky.has_key("TrimSideChoice"):
+        oldTSChoice = sc.sticky["TrimSideChoice"]
+    else:
+        oldTSChoice=True
+    
+    choice = [["Trim", "Outside", "Inside"]]
+    res = rs.GetBoolean("Side to trim away?", choice, [oldTSChoice])
+    if not res: return
+    trimIns = res[0] #False=Outside
+    
+    tol=sc.doc.ModelAbsoluteTolerance
+    bb=rs.BoundingBox(origCrvs,refPlane) #CPlane box, world coords
+    if not bb: return
+    zVec=refPlane.ZAxis
+    
+    rs.EnableRedraw(False)
+    botPlane=Rhino.Geometry.Plane(bb[0]-zVec,zVec) #check
+    xform=rs.XformPlanarProjection(botPlane)
+    cutCrvs=rs.TransformObjects(cCrvs,xform,True)
+    ccc=CheckPlanarCurvesForCollision(cutCrvs)
+    if ccc:
+        msg="Boundary curves overlap, results may be unpredictable, continue?"
+        res=rs.MessageBox(msg,1+32)
+        if res!= 1: return
+    bSrfs=rs.AddPlanarSrf(cutCrvs)
+    rs.DeleteObjects(cutCrvs)
+    if bSrfs == None: return
+    
+    line=rs.AddLine(bb[0]-zVec,bb[4]+zVec)
+    vols=[]
+    for srf in bSrfs:
+        ext=rs.ExtrudeSurface(srf,line,True)
+        if ext != None: vols.append(ext)
+    rs.DeleteObjects(bSrfs)
+    rs.DeleteObject(line)
+    if len(vols)==0: return
+    exGroup=rs.AddGroup()
+    rs.AddObjectsToGroup(vols,exGroup)
+    
+    rs.Prompt("Splitting curves...")
+    rs.SelectObjects(origCrvs)
+    rs.Command("_Split _-SelGroup " + exGroup + " _Enter", False)
+    splitRes=rs.LastCreatedObjects()
+    rs.DeleteGroup(exGroup)
+    
+    #CLASSIFY
+    rs.Prompt("Classifying trims...")
+    noSplit=[]
+    for crv in origCrvs:
+        #add curve to list if it has not been split (still exists in doc)
+        id=sc.doc.Objects.Find(crv)        
+        if id != None: noSplit.append(crv)
+        
+    errors=0
+    if splitRes:
+        if len(noSplit)>0: splitRes.extend(noSplit)
+        for crv in splitRes:
+            inside=MultiTestInOrOut(crv,vols)
+            if inside != None:
+                if (inside and trimIns) or (not inside and not trimIns):
+                    rs.DeleteObject(crv)
+            else:
+                errors+=1
+        
+    rs.DeleteObjects(vols)
+    if errors>0: print "Problems with {} curves".format(errors)
+    sc.sticky["TrimSideChoice"] = trimIns
+
+MultiNestedBoundaryTrimCurves()
 
 def brep_or_crv(guids):
 	#probably want to add extrusions, type 1073741824, as if they are breps
@@ -228,7 +364,7 @@ def rc_get_inputs():
 	print projection_guids
 
 	if plan_heights:
-		return envelope_brep_guid, plan_heights, projection_guids
+		return envelope_brep_guid, plan_heights, projection_guids, envelope_brep_guid
 	else:
 		return None
 
@@ -252,16 +388,16 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 	if len(crv_list) == 0:
 		print "Error: Cut planes do not intersect the envelope brep"
 		return None
-
+	
 	#set base for output.
 	xbase = 0
 	ybase = 0
 	#set the amount to move up from the bottom of the brep for cutting the lower outline.
 	#this should be replaced by a projection of the bottom face of the brep.
 	epsilon = D_TOL*2
-
+	
 	select_items = []
-
+	
 	increment = max(d.X for d in bdims_list) + GAP_SIZE*1
 	dplane_list = get_drawing_planes(bdims_list,rs.WorldXYPlane(),GAP_SIZE)
 	refplane_list = [rs.MovePlane(rs.WorldXYPlane(),pt) for pt in refpt_list]
@@ -291,13 +427,13 @@ def RunCommand( is_interactive ):
 	setGlobals()
 
 	try:
-		brep, plan_heights, projection_guids = rc_get_inputs()
+		brep, plan_heights, projection_guids, envelope_brep = rc_get_inputs()
 	except:
 		print "Error in input!"
 		return 0
 
 	rc_cut_plan(brep,plan_heights,projection_guids,True)
-
+	rs.UnlockObject(envelope_brep)
 
 	return 0
 
