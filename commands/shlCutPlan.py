@@ -9,6 +9,7 @@ import rhinoscriptsyntax as rs
 import Rhino
 import System.Drawing as sd
 from scriptcontext import doc
+from scriptcontext import sticky
 import System
 
 import shl_toolbox_lib.layers as wla
@@ -36,7 +37,7 @@ def setGlobals():
 
 	global LCUT_INDICES
 	LCUT_INDICES = wla.get_lcut_layers()
-
+	
 	global GAP_SIZE
 	GAP_SIZE = 5
 
@@ -48,142 +49,6 @@ def setup_GetObject(g):
 #	g.DeselectAllBeforePostSelect = False
 	return
 
-import rhinoscriptsyntax as rs
-import scriptcontext as sc
-import Rhino
-
-def TrimOutside(outline_crvs,exterior_crvs):
-	
-	outline_crvs = [c for c if rs.IsCurveClosed(crv)]
-	if len(closed_crvs) == 0 or len(exterior_crvs) == 0:
-		return None
-	
-	regions=rs.AddPlanarSrf(outline_crvs)
-	
-	extrude_guide = rs.AddLine([0,0,0],[0,0,10])
-	extruded_boundaries = []
-	for r in regions:
-		b=rs.ExtrudeSurface(srf,line,True)
-		if ext != None: vols.append(b)
-	rs.DeleteObjects(regions)
-	rs.DeleteObject(extrude_guide)
-	
-	
-def MultiTestInOrOut(testCrv, vols):
-    #tests midpoint of curve for containment inside one of several volumes
-    #returns True if point is inside at least one of the volumes, otherwise False
-    rc=False
-    dom=rs.CurveDomain(testCrv)
-    if dom==None:
-        #debug print "bad domain"
-        return
-    cmPt=rs.EvaluateCurve(testCrv,(dom[0]+dom[1])/2)
-    if cmPt==None:
-        #debug print "bad curve"
-        return
-    for vol in vols:
-        if rs.IsPointInSurface(vol,cmPt,True,sc.doc.ModelAbsoluteTolerance):
-            #curve is inside one of the volumes
-            rc=True
-            break
-    return rc
-    
-def CheckPlanarCurvesForCollision(crvs):
-    #curves must be planar, returns True if any two curves overlap
-    for i in range(len(crvs)-1):
-        for j in range(i+1,len(crvs)):
-            if rs.PlanarCurveCollision(crvs[i],crvs[j]): return True
-    return False
-
-def MultiNestedBoundaryTrimCurves():
-    msg="Select closed boundary curves for trimming"
-    TCrvs = rs.GetObjects(msg, 4, preselect=False)
-    if not TCrvs: return
-    
-    cCrvs=[crv for crv in TCrvs if rs.IsCurveClosed(crv)]
-    if len(cCrvs)==0:
-        print "No closed trim curves found"
-        return
-    rs.LockObjects(cCrvs)
-    
-    origCrvs = rs.GetObjects("Select curves to trim", 4)
-    rs.UnlockObjects(cCrvs)
-    if not origCrvs : return
-    
-    #plane which is active when trim curve is chosen
-    refPlane = rs.ViewCPlane()
-    
-
-    
-    if sc.sticky.has_key("TrimSideChoice"):
-        oldTSChoice = sc.sticky["TrimSideChoice"]
-    else:
-        oldTSChoice=True
-    
-    choice = [["Trim", "Outside", "Inside"]]
-    res = rs.GetBoolean("Side to trim away?", choice, [oldTSChoice])
-    if not res: return
-    trimIns = res[0] #False=Outside
-    
-    tol=sc.doc.ModelAbsoluteTolerance
-    bb=rs.BoundingBox(origCrvs,refPlane) #CPlane box, world coords
-    if not bb: return
-    zVec=refPlane.ZAxis
-    
-    rs.EnableRedraw(False)
-    botPlane=Rhino.Geometry.Plane(bb[0]-zVec,zVec) #check
-    xform=rs.XformPlanarProjection(botPlane)
-    cutCrvs=rs.TransformObjects(cCrvs,xform,True)
-    ccc=CheckPlanarCurvesForCollision(cutCrvs)
-    if ccc:
-        msg="Boundary curves overlap, results may be unpredictable, continue?"
-        res=rs.MessageBox(msg,1+32)
-        if res!= 1: return
-    bSrfs=rs.AddPlanarSrf(cutCrvs)
-    rs.DeleteObjects(cutCrvs)
-    if bSrfs == None: return
-    
-    line=rs.AddLine(bb[0]-zVec,bb[4]+zVec)
-    vols=[]
-    for srf in bSrfs:
-        ext=rs.ExtrudeSurface(srf,line,True)
-        if ext != None: vols.append(ext)
-    rs.DeleteObjects(bSrfs)
-    rs.DeleteObject(line)
-    if len(vols)==0: return
-    exGroup=rs.AddGroup()
-    rs.AddObjectsToGroup(vols,exGroup)
-    
-    rs.Prompt("Splitting curves...")
-    rs.SelectObjects(origCrvs)
-    rs.Command("_Split _-SelGroup " + exGroup + " _Enter", False)
-    splitRes=rs.LastCreatedObjects()
-    rs.DeleteGroup(exGroup)
-    
-    #CLASSIFY
-    rs.Prompt("Classifying trims...")
-    noSplit=[]
-    for crv in origCrvs:
-        #add curve to list if it has not been split (still exists in doc)
-        id=sc.doc.Objects.Find(crv)        
-        if id != None: noSplit.append(crv)
-        
-    errors=0
-    if splitRes:
-        if len(noSplit)>0: splitRes.extend(noSplit)
-        for crv in splitRes:
-            inside=MultiTestInOrOut(crv,vols)
-            if inside != None:
-                if (inside and trimIns) or (not inside and not trimIns):
-                    rs.DeleteObject(crv)
-            else:
-                errors+=1
-        
-    rs.DeleteObjects(vols)
-    if errors>0: print "Problems with {} curves".format(errors)
-    sc.sticky["TrimSideChoice"] = trimIns
-
-MultiNestedBoundaryTrimCurves()
 
 def brep_or_crv(guids):
 	#probably want to add extrusions, type 1073741824, as if they are breps
@@ -262,9 +127,10 @@ def get_plan_brep():
 	#1. Get plan surface
 	go = Rhino.Input.Custom.GetObject()
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep
-
-	opt_thickness = Rhino.Input.Custom.OptionDouble(5.5,0.2,1000)
-
+	
+	default_thickness = sticky["defaultThickness"] if sticky.has_key("defaultThickness") else 5.5
+	opt_thickness = Rhino.Input.Custom.OptionDouble(default_thickness,0.2,1000)
+	
 	go.SetCommandPrompt("Select floorplate outline surface to extract plan cuts")
 	go.AddOptionDouble("FacadeThickness", opt_thickness)
 
@@ -288,12 +154,13 @@ def get_plan_brep():
 	#set globals
 	global THICKNESS
 	THICKNESS = opt_thickness.CurrentValue
-
+	sticky["defaultThickness"] = THICKNESS
+	
 	#Get brep representations of objects
 	if go.ObjectCount != 1:
 		return
 	envelope_guid = go.Object(0).Object().Id
-
+	
 	return envelope_guid
 
 
@@ -326,31 +193,31 @@ def get_plane_and_projection_crvs(plane_num):
 	go.GeometryFilter = Rhino.DocObjects.ObjectType.Brep | Rhino.DocObjects.ObjectType.Curve
 	go.SetCommandPrompt("Floor %d: Select breps and curves to project. Breps are assumed to be vertical extrusion-type" % plane_num)
 	rs.UnselectObject(floorplate_brep_obj.Id)
-
+	
 	projection_guids = []
 	objects_selected = True
-
+	
 	res = go.GetMultiple(1,0)
 	if res != Rhino.Input.GetResult.Object:
 		print "nothing"
 		return plan_cut_height, []
-
+	
 	#Get geometry
 	for i in xrange(go.ObjectCount):
 		projection_guids.append(go.Object(i).Object().Id)
-
+	
 	return plan_cut_height, projection_guids
 
 
 def rc_get_inputs():
-
 	envelope_brep_guid = get_plan_brep()
 	rs.LockObject(envelope_brep_guid)
-
+	
 	more_floors = True
 	count = 0
 	plan_heights = []
 	projection_guids = []
+	
 	while more_floors and count < 100:
 		try:
 			h, p = get_plane_and_projection_crvs(count+1)
@@ -359,10 +226,7 @@ def rc_get_inputs():
 		except:
 			break
 		count += 1
-
-	print plan_heights
-	print projection_guids
-
+	
 	if plan_heights:
 		return envelope_brep_guid, plan_heights, projection_guids, envelope_brep_guid
 	else:
@@ -379,8 +243,15 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 	for i,guids in enumerate(floor_guids):
 		if not (min_z < cut_heights[i] < max_z): continue
 		outline_crv, internals, refpt, bdims = process_floor(guids,boundary_brep,cut_heights[i])
-		crv_list.append([[outline_crv],internals])
-		layer_list.append([LCUT_INDICES[1],LCUT_INDICES[2]]) #TODO: this needs to be the correct layer indices!!!!
+		
+		mp = Rhino.Geometry.AreaMassProperties.Compute(outline_crv)
+		outline_crv_centroid = mp.Centroid
+		corner_style = Rhino.Geometry.CurveOffsetCornerStyle.Sharp
+		offset_crv = outline_crv.Offset(outline_crv_centroid,rs.coerce3dvector([0,0,1]),THICKNESS,D_TOL,corner_style)
+		offset_crv_geometry = offset_crv[0]
+		
+		crv_list.append([[offset_crv_geometry],internals])
+		layer_list.append([LCUT_INDICES[1],LCUT_INDICES[2]])
 		refpt_list.append(refpt)
 		bdims_list.append(bdims)
 	#...brep conversion may be necessary
@@ -409,7 +280,7 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 			for c in layer_crvs:
 				c.Transform(t)
 			select_items.extend(wru.add_curves_to_layer(layer_crvs,layer_list[i][j]))
-
+ 		
 		labelpt = (bdims_list[i].X/2 + dplane_list[i].Origin.X, bdims_list[i].Y/2 + dplane_list[i].OriginY, 0)
 		td = rs.AddTextDot(str(i+1),labelpt)
 		rs.ObjectLayer(td,"XXX_LCUT_00-GUIDES")
@@ -436,5 +307,6 @@ def RunCommand( is_interactive ):
 	rs.UnlockObject(envelope_brep)
 
 	return 0
+
 
 RunCommand(False)
