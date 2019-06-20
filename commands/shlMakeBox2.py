@@ -1,7 +1,6 @@
 """
 SHL Architects 13-06-2019
 Sean Lamb (Developer)
-- edits for clarity; fixed global assignment.
 sel@shl.dk
 """
 
@@ -42,8 +41,8 @@ def setGlobals():
 
 
 #GENERAL UTILITIES
-#flatten iterables
 def flatten(lst):
+	"""flatten a list of iterables"""
 	result = []
 	for element in lst:
 		if hasattr(element, '__iter__'):
@@ -62,6 +61,7 @@ def add_layer(name,color):
 
 
 def get_num_joins(dim,J_LEN):
+	#decide how many joins to make along a distance.
 	n_joins = int(dim/J_LEN)
 	if n_joins % 2 == 0:
 		n_joins += 1
@@ -71,7 +71,6 @@ def get_num_joins(dim,J_LEN):
 
 
 #MAIN FUNCTIONS
-#probably easier way to do truncate...
 def make_join(edge,n_joins,dx,dy,inner,truncate):
 
 	pts = rs.DivideCurve(edge,n_joins)
@@ -114,7 +113,8 @@ def make_join(edge,n_joins,dx,dy,inner,truncate):
 
 
 def get_rabbet_info(outer_pt_ids):
-	'''helper function for getting rabbet info from the outer pts of the joint polyline'''
+	"""helper function for getting rabbet info from the outer pts of the joint polyline
+	this is used for placing rectangular joint holes"""
 	epsilon = 0.01
 	pts = [[rs.coerce3dpoint(p[0]), rs.coerce3dpoint(p[1])] for p in outer_pt_ids]
 	
@@ -138,8 +138,8 @@ def get_rabbet_info(outer_pt_ids):
 	return [startpts,lengths]
 
 
-#make slots and return information for placing them
 def make_slots(W,L):
+	#make slots and return information for placing them.
 	g_W = W
 	g_L = L
 	
@@ -227,9 +227,8 @@ def make_lid(height,length,material_thickness,notch_depth):
 	return [outline,hole]
 
 
-#add slots with a specified gap between them
 def add_slide_holders(rect,grip,gap,y_offset=0):
-	#by default will be centered in Y.
+	#Add slots with a specified gap between them. by default will be centered in Y.
 	g_crv = grip[0]
 	g_c = grip[1]
 	g_W = grip[2]
@@ -416,7 +415,8 @@ def get_outer_box(bb_dims, tol, T_OBOX, TOL_INSIDE, ORIGIN_OB):
 	
 	SELECT_GUIDS.extend(final_crvs)
 	SELECT_GUIDS.extend([slot1])
-#	return br
+	return br
+
 
 def rc_shl_box():
 	#get stickies
