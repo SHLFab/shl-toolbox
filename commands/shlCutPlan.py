@@ -1,8 +1,7 @@
 """
 SHL Architects 16-10-2018
-v1.3 Sean Lamb (Developer)
+Sean Lamb (Developer)
 sel@shl.dk
-test
 """
 
 import rhinoscriptsyntax as rs
