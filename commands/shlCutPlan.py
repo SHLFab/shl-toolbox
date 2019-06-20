@@ -26,9 +26,7 @@ reload(wfa)
 import itertools
 import random as rand
 
-# __commandname__ = "shlPlotVolumes"
 
-#necessary?
 def setGlobals():
 	#mm
 	global D_TOL, A_TOL
@@ -41,12 +39,10 @@ def setGlobals():
 	global GAP_SIZE
 	GAP_SIZE = 5
 
+
 def setup_GetObject(g):
-#	g.AcceptEnterWhenDone(True)
 	g.AcceptNothing(True)
 	g.EnableClearObjectsOnEntry(False)
-#	g.EnableUnselectObjectsOnExit(False)
-#	g.DeselectAllBeforePostSelect = False
 	return
 
 
@@ -68,7 +64,6 @@ def get_drawing_planes(section_dims, baseplane, increment):
 	return drawing_planes
 
 
-#process an individual floor
 def process_floor(in_objects,floor_outline,outline_cut_height=None):
 	"""function used to process an individual floor.
 	input:
@@ -176,9 +171,9 @@ def get_plane_and_projection_crvs(plane_num):
 
 	res = go.Get()
 	if res != Rhino.Input.GetResult.Object:
-		print "nothing"
 		return None
-	else: print "something selected"
+	else:
+		pass
 
 	#Get brep representations of objects
 	if go.ObjectCount != 1: return None
@@ -294,19 +289,20 @@ def rc_cut_plan(boundary_brep, cut_heights, floor_guids, use_epsilon):
 
 # RunCommand is the called when the user enters the command name in Rhino.
 def RunCommand( is_interactive ):
-
 	setGlobals()
-
+	
 	try:
 		brep, plan_heights, projection_guids, envelope_brep = rc_get_inputs()
 	except:
 		print "Error in input!"
-		return 0
-
-	rc_cut_plan(brep,plan_heights,projection_guids,True)
-	rs.UnlockObject(envelope_brep)
-
-	return 0
+	
+	try:
+		rc_cut_plan(brep,plan_heights,projection_guids,True)
+	except:
+		print "Error cutting plans!"
+	
+	if envelope_brep: rs.UnlockObject(envelope_brep)
+	return None
 
 
 RunCommand(False)
