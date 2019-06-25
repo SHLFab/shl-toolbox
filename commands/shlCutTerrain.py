@@ -215,6 +215,8 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	output: the new terrain breps
 	"""
 	#boolean problem is caused by non-manifold error. need to scale the B_breps prior to booleaning.
+	rs.EnableRedraw(True)
+	rs.Redraw()
 	new_terrain_section_breps = []
 	for i,brep_level in enumerate(terrain_section_breps):
 		new_level_terrain_section_breps = []
@@ -432,7 +434,8 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 					B_breps.append(rs.ExtrudeSurface(B_srf,LONG_GUIDE))
 				#truncate the B_breps
 				if BORDER_BOOL: B_breps = [cut_frame_from_brep(b,frame_brep) for b in B_breps]
-				rs.ObjectLayer(B_breps,"s6")
+				#rs.AddLayer("debug6",[50,200,50]) #debug
+				#rs.ObjectLayer(B_breps,"debug6")
 				boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 				rs.DeleteObjects(B_breps)
 				if boolean_result:
@@ -440,10 +443,12 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 				else:
 					final_brep = rs.CopyObjects([A_brep])
 				rs.DeleteObjects([A_brep])
-				rs.ObjectLayer(final_brep,"s11")
+				#rs.ObjectLayer(B_breps,"debug6")
+				#rs.AddLayer("s11",[200,200,50]) #debug
+				#rs.ObjectLayer(final_brep,"s11") #debug
 				final_level_breps.extend(final_brep)
 		else:
-#			rs.ObjectLayer(A_brep,"s11")
+			#rs.ObjectLayer(A_brep,"s11")
 			final_level_breps.extend(brep_level)
 		final_breps.append(final_level_breps)
 	
@@ -471,7 +476,6 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 		etch_curves_level = []
 		
 		for srf in srflevel:
-#			rs.Redraw()
 			sb = rs.DuplicateSurfaceBorder(srf)
 			sb_outer = rs.DuplicateSurfaceBorder(srf,1)
 			if sb:
@@ -481,7 +485,7 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 					if p: guide_curves_level.extend(p)
 					rs.DeleteObject(sb_outer)
 			if sb_outer: rs.DeleteObject(sb_outer) #refactor...
-		etch_curves_level = project_etching("road",srflevel)
+		etch_curves_level = project_etching(etching_layer,srflevel)
 		
 		etch_curves.append(etch_curves_level)
 		main_curves.append(main_curves_level)
@@ -499,7 +503,6 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	movement_range = [(i+1)*layout_dist for i in xrange(len(main_curves))]
 	for i,level_list in enumerate(main_curves):
 		cp_main = rs.CurvePlane(level_list[0])
-#		print movement_range[i]
 		rs.MoveObjects(level_list,[0,movement_range[i],-cp_main.OriginZ])
 		
 		if etch_curves[i]:
@@ -509,8 +512,6 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 			cp_guide = rs.CurvePlane(guide_curves[i][0])
 			rs.MoveObjects(guide_curves[i],[0,movement_range[i-1],-cp_guide.OriginZ])
 	
-	
-#	rs.Redraw()
 	main_curves = [item for sublist in main_curves for item in sublist]
 	guide_curves = [item for sublist in guide_curves for item in sublist]
 	etch_curves = [item for sublist in etch_curves for item in sublist]
@@ -531,7 +532,6 @@ def rc_terraincut2(b_obj,building_layer,etching_layer):
 	rs.DeleteObjects(cb_crvs)
 	rs.DeleteObject(frame_brep)
 	
-#	rs.DeleteObjects(extruded_section_breps)
 	rs.ObjectLayer(main_curves,"XXX_LCUT_01-CUT")
 	rs.ObjectLayer(guide_curves,"XXX_LCUT_03-LSCORE")
 	rs.ObjectLayer(etch_curves,"XXX_LCUT_04-ENGRAVE")
