@@ -135,6 +135,8 @@ def get_curves_on_layer(layername):
 
 #CURRENTLY WORKING ON THIS LAYER
 def get_building_booleans(building_breps,planes):
+	if not building_breps:
+		return None
 	
 	bldg_intersection_boolean_breps = []
 	bldg_intersection_breps = []
@@ -215,8 +217,6 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	output: the new terrain breps
 	"""
 	#boolean problem is caused by non-manifold error. need to scale the B_breps prior to booleaning.
-	rs.EnableRedraw(True)
-	rs.Redraw()
 	new_terrain_section_breps = []
 	for i,brep_level in enumerate(terrain_section_breps):
 		new_level_terrain_section_breps = []
@@ -242,7 +242,14 @@ def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 
 
 def project_etching(etch_crvs,surfaces):
-	return rs.ProjectCurveToSurface(etch_crvs,surfaces,[0,0,-1])
+	if not etch_crvs:
+		return []
+	
+	pc = rs.ProjectCurveToSurface(etch_crvs,surfaces,[0,0,-1])
+	if pc:
+		return pc
+	else:
+		return []
 
 
 def rc_getinput():
@@ -258,7 +265,7 @@ def rc_getinput():
 	opt_borderthickness = Rhino.Input.Custom.OptionDouble(default_borderThickness,0.2,1000)
 	opt_border = Rhino.Input.Custom.OptionToggle(default_borderBool,"No","Yes")
 	
-	go.SetCommandPrompt("Select terrain surface")
+	go.SetCommandPrompt("Select terrain surface. (Note: Border Mode is in beta and may fail)")
 	go.AddOptionDouble("MaterialThickness", opt_thickness)
 	go.AddOptionDouble("BorderThickness",opt_borderthickness)
 	go.AddOptionToggle("Border", opt_border)
@@ -304,6 +311,7 @@ def rc_getinput():
 	global SHORT_GUIDE, LONG_GUIDE
 	SHORT_GUIDE = rs.AddLine([0,0,0],[0,0,-THICKNESS])
 	LONG_GUIDE = rs.AddLine([0,0,0],[0,0,-THICKNESS*4])
+	rs.LockObjects([SHORT_GUIDE,LONG_GUIDE])
 	
 	#set layers
 	global LCUT_IND
@@ -316,10 +324,13 @@ def rc_getinput():
 	sticky["borderThickness"] = BORDER_THICKNESS
 	sticky["borderBool"] = BORDER_BOOL
 	
+	rs.LockObject(brep_obj.Id)
 	building_brep_guids = rs.GetObjects("Select breps representing buildings",filter=16)
-	rs.SelectObjects(building_brep_guids)
 	engraving_crv_guids = rs.GetObjects("Select curves to engrave on terrain",filter=4)
+	rs.UnlockObject(brep_obj.Id)
+	
 	return brep_obj,building_brep_guids,engraving_crv_guids
+
 
 def get_surface_outline(b_geo):
 	"""get the surface outline and project to the surface's baseplane."""
@@ -408,10 +419,10 @@ def rc_terraincut2(b_obj,building_guids,etching_guids):
 	#rs.Redraw()
 	#make voids for existing buildings
 	building_breps = building_guids
-	get_building_footprints(building_breps,planes)
 	bldg_subtraction_breps = get_building_booleans(building_breps,planes)
-	if bldg_subtraction_breps: extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
-	[rs.DeleteObjects(x) for x in bldg_subtraction_breps] #purge the building breps
+	if bldg_subtraction_breps:
+		extruded_section_breps = cut_building_volumes(extruded_section_breps,bldg_subtraction_breps)
+		[rs.DeleteObjects(x) for x in bldg_subtraction_breps] #purge the building breps
 	
 	num_divisions = len(section_srfs)
 	frame_brep = get_frame_brep(frame_base_surface,BORDER_THICKNESS,THICKNESS*num_divisions)
@@ -431,6 +442,8 @@ def rc_terraincut2(b_obj,building_guids,etching_guids):
 				if BORDER_BOOL: B_breps = [cut_frame_from_brep(b,frame_brep) for b in B_breps]
 				#rs.AddLayer("debug6",[50,200,50]) #debug
 				#rs.ObjectLayer(B_breps,"debug6")
+				#handle a bug creating lists of lists sometimes.
+				if isinstance(B_breps[0],(list,)): B_breps = B_breps[0]
 				boolean_result = rs.BooleanDifference([A_brep],B_breps,False)
 				rs.DeleteObjects(B_breps)
 				if boolean_result:
@@ -539,11 +552,14 @@ def rc_terraincut2(b_obj,building_guids,etching_guids):
 
 if __name__ == "__main__":
 	set_globals()
-	surface_geometry, b, e = rc_getinput()
+	result = rc_getinput()
 	
-	if isinstance(surface_geometry, Rhino.Commands.Result):
+	if isinstance(result, Rhino.Commands.Result):
 		print "Invalid Input: no surface selected"
 	else:
+		surface_geometry = result[0]
+		b = result[1]
+		e = result[2]
 		rs.EnableRedraw(False)
 		result = rc_terraincut2(surface_geometry, b, e)
 		if result == 0:
