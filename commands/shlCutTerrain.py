@@ -12,7 +12,7 @@ reload(wut)
 import shl_toolbox_lib.rhino_util as wrh
 reload(wrh)
 import shl_toolbox_lib.geo as wge
-reload(wge)
+reload(wge) 
 
 
 def set_globals():
@@ -70,6 +70,8 @@ def extrude_down_srf(srf,height=None):
 
 
 def get_frame_brep(outline_srf,border_thickness,thickness):
+	"""get the frame brep. This is a solid that is booleaned with the slices of
+	terrain to make a border when border mode is on."""
 	edge_crvs = rs.DuplicateEdgeCurves(outline_srf)
 	outline_crv = rs.JoinCurves(edge_crvs)
 	pt, _ = rs.CurveAreaCentroid(outline_crv)
@@ -90,7 +92,7 @@ def get_frame_brep(outline_srf,border_thickness,thickness):
 
 
 def get_lowest_curve_info(brep, h_tol):
-	#right now hardcoded to not deal with multiple breps at the final step. to revise if needed.
+	#currently hardcoded to not deal with multiple breps at the final step. to revise if needed.
 	bdims = wge.get_bounding_dims(brep)
 	Rhino.Geometry.Brep.MergeCoplanarFaces(brep,D_TOL)
 	brep_faces = wge.get_extreme_srf(brep, h_tol,False)
@@ -134,8 +136,9 @@ def get_curves_on_layer(layername):
 	return crvs
 
 
-#CURRENTLY WORKING ON THIS LAYER
 def get_building_booleans(building_breps,planes):
+	"""make slices of the building that will be booleaneddifferenced out of the
+	terrain slices."""
 	if not building_breps:
 		return None
 	
@@ -172,9 +175,8 @@ def get_building_booleans(building_breps,planes):
 	return boolean_breps
 
 
-#TODO: MAKE BOOLEANS CORRESPONDING TO BUILDING FOOTPRINTS
 def get_building_footprints(building_breps,planes):
-	
+	"""extract the footprints from the buildings"""
 	#rs.EnableRedraw()
 	plane_sections = []
 	slice_depth = []
@@ -210,7 +212,6 @@ def get_building_footprints(building_breps,planes):
 	return
 
 
-#when method is robust, make boolean operation delete the inputs.
 def cut_building_volumes(terrain_section_breps,bldg_section_breps):
 	"""
 	input: list of lists of extruded terrain breps and section breps.
