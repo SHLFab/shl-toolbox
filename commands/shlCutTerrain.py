@@ -14,6 +14,7 @@ reload(wrh)
 import shl_toolbox_lib.geo as wge
 reload(wge)
 
+
 def set_globals():
 	global D_TOL, A_TOL
 	D_TOL = doc.ActiveDoc.ModelAbsoluteTolerance
