@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="utf-16"?>
+<RhinoScriptCompilerProject>
+  <Plugin>
+    <PluginName>SHL Toolbar</PluginName>
+    <PluginFolder>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\build\</PluginFolder>
+    <AuthorName>SHL Architects - Sean Lamb (Developer)</AuthorName>
+    <AuthorEmail>sel@shl.dk</AuthorEmail>
+    <AuthorPhone>+45 78 74 48 12</AuthorPhone>
+    <AuthorAddress>Njalsgade 17A/Pakhus 2/2300 Copenhagen S/Denmark</AuthorAddress>
+    <AuthorCountry>Denmark</AuthorCountry>
+    <AuthorWebsite>www.shl.dk</AuthorWebsite>
+    <UpdateURL />
+    <CopyrightMessage>Loading SHL Fabrication Toolbox v1.3</CopyrightMessage>
+    <RhinoCommonOverride>C:\Program Files\Rhino 6\System\RhinoCommon.dll</RhinoCommonOverride>
+  </Plugin>
+  <Commands>
+    <Command>
+      <Name>shlBridge</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlBridge.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlSliceVolumes</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlSliceVolumes.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlTag</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlTag.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlLaserSheet</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlLaserSheet.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlLayer</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlLayer.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlPlotVolumes</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlPlotVolumes.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlUnrollWithThickness</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlUnrollWithThickness.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlMakeBox</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlMakeBox.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlCollapseBox</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlCollapseBox.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlSketchLayers</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlSketchLayers.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlSmartOutline</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlSmartOutline.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlCutTerrain</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlCutTerrain.py</Path>
+      <Type>Normal</Type>
+    </Command>
+    <Command>
+      <Name>shlMakeSlidingLidBox</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlMakeSlidingLidBox.py</Path>
+      <Type>Normal</Type>
+    </Command>
+  </Commands>
+  <Menu />
+</RhinoScriptCompilerProject>

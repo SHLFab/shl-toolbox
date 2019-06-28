@@ -25,7 +25,7 @@ def make_xml_command_list(command_list,dir):
 def make_plugin_info(version_num):
 	"""generate xml for plugin info"""
 	name = "SHL Toolbar"
-	build_directory = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\"
+	build_directory = "C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\"
 	author = "SHL Architects - Sean Lamb (Developer)"
 	email = "sel@shl.dk"
 	phone = "+45 78 74 48 12"
@@ -95,8 +95,8 @@ if __name__=="__main__":
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
 
 
-	path_to_exe = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\buildhelpers\\RhinoScriptCompiler.exe'
-	path_to_file = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\' + rhc_filename
+	path_to_exe = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\buildhelpers\\RhinoScriptCompiler.exe'
+	path_to_file = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\\build\\' + rhc_filename
 
 	#debug... shouldn't have to be using ToString here, but as a temporary fix this works.
 	#xdoc.Save("test1.rhc",xm.SaveOptions.DisableFormatting)
@@ -108,16 +108,16 @@ if __name__=="__main__":
 	print str_doc
 
 	#make rhp file
-#	subprocess.call([path_to_exe,path_to_file])
+	subprocess.call([path_to_exe,path_to_file])
 
 
 	#get paths to relevant files
-	rhp_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rhp')
-	rui_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rui')
-	rhi_build_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\')
+	rhp_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhp')
+	rui_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rui')
+	rhi_build_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\')
 
 	try:
-		os.remove(os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rhi'))
+		os.remove(os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhi'))
 		print "removed existing rhi"
 	except:
 		pass
