@@ -65,7 +65,7 @@ def make_rhi(rhp_path,rui_path,directory_out):
 
 if __name__=="__main__":
 
-	version_num = 0.2
+	version_num = 1.3
 	rhc_filename = "SHL_Toolbar.rhc"
 #	commands_path = 'O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\command_staging\\'
 	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\command_staging\\'
@@ -81,7 +81,8 @@ if __name__=="__main__":
 			"shlCollapseBox",
 			"shlSketchLayers",
 			"shlSmartOutline",
-			"shlCutTerrain"
+			"shlCutTerrain",
+			"shlMakeSlidingLidBox"
 			]
 
 	xml_command_list = make_xml_command_list(command_list,commands_path)
@@ -94,8 +95,8 @@ if __name__=="__main__":
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
 
 
-	path_to_exe = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\buildhelper'
-	path_to_file = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\" + rhc_filename
+	path_to_exe = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\buildhelpers\\RhinoScriptCompiler.exe'
+	path_to_file = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\' + rhc_filename
 
 	#debug... shouldn't have to be using ToString here, but as a temporary fix this works.
 	#xdoc.Save("test1.rhc",xm.SaveOptions.DisableFormatting)
@@ -111,13 +112,13 @@ if __name__=="__main__":
 
 
 	#get paths to relevant files
-	rhp_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhp")
-	rui_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rui")
-	rhi_build_path = os.path.normpath("O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build")
+	rhp_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rhp')
+	rui_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rui')
+	rhi_build_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\')
 
 	try:
-		os.remove(os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhi"))
-		print "removed"
+		os.remove(os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\build\\SHL_Toolbar.rhi'))
+		print "removed existing rhi"
 	except:
 		pass
 
