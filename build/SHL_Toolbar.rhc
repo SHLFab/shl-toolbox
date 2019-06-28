@@ -79,6 +79,11 @@
       <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlMakeSlidingLidBox.py</Path>
       <Type>Normal</Type>
     </Command>
+    <Command>
+      <Name>shlCutPlan</Name>
+      <Path>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\command_staging\shlCutPlan.py</Path>
+      <Type>Normal</Type>
+    </Command>
   </Commands>
   <Menu />
 </RhinoScriptCompilerProject>
