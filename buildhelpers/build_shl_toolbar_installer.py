@@ -35,7 +35,7 @@ def make_plugin_info(version_num):
 	update_url = ""
 	copyright = "Loading SHL Fabrication Toolbox v" + str(version_num)
 	rc_directory = "C:\\Program Files\\Rhino 6\\System\\RhinoCommon.dll"
-	
+
 	plugin = xm.XElement(xm.XName.Get("Plugin"),
 							xm.XElement(xm.XName.Get("PluginName"),name),
 							xm.XElement(xm.XName.Get("PluginFolder"),build_directory),
@@ -64,11 +64,11 @@ def make_rhi(rhp_path,rui_path,directory_out):
 	pass
 
 if __name__=="__main__":
-	
+
 	version_num = 0.2
 	rhc_filename = "SHL_Toolbar.rhc"
 #	commands_path = 'O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\command_staging\\'
-	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\ws_tools_repo\\shl-toolbox\\'
+	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\command_staging\\'
 	command_list = [
 			"shlBridge",
 			"shlSliceVolumes",
@@ -83,20 +83,20 @@ if __name__=="__main__":
 			"shlSmartOutline",
 			"shlCutTerrain"
 			]
-	
+
 	xml_command_list = make_xml_command_list(command_list,commands_path)
 	plugin = make_plugin_info(version_num)
-	
+
 	commands = xm.XElement(xm.XName.Get("Commands"),xml_command_list)
 	menu = xm.XElement("Menu")
-	
+
 	xdoc = xm.XDocument(xm.XDeclaration("1.0","utf-16","no"),xm.XElement(
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
-	
-	
-	path_to_exe = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\RhinoScriptCompiler.exe"
+
+
+	path_to_exe = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\commands\\buildhelper'
 	path_to_file = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\" + rhc_filename
-	
+
 	#debug... shouldn't have to be using ToString here, but as a temporary fix this works.
 	#xdoc.Save("test1.rhc",xm.SaveOptions.DisableFormatting)
 	str_doc = xdoc.ToString()
@@ -105,22 +105,22 @@ if __name__=="__main__":
 	file.write(str_doc)
 	file.close()
 	print str_doc
-	
+
 	#make rhp file
 #	subprocess.call([path_to_exe,path_to_file])
-	
-	
+
+
 	#get paths to relevant files
 	rhp_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhp")
 	rui_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rui")
 	rhi_build_path = os.path.normpath("O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build")
-	
-	try: 
+
+	try:
 		os.remove(os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhi"))
 		print "removed"
 	except:
 		pass
-	
+
 	archive_from_files("SHL_Toolbar",rhi_build_path,[rhp_path,rui_path],'rhi')
 #	print rhp_path
 #	print rui_path
