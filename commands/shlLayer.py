@@ -127,10 +127,10 @@ def rc_layer_change():
 	DESTINATION_LAYER = list_vals[default_layer_ind]
 	COPY_ORIGINALS = opt_copy.CurrentValue
 	
-	start = timeit.default_timer()
+
 	get_lcut_layers()
+	
 	#selected curve objects
-	start = timeit.default_timer()
 	c_ids_list = []
 	for i in xrange(go.ObjectCount):
 		c_obj = go.Object(i).Object()

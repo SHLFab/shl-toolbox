@@ -82,7 +82,8 @@ if __name__=="__main__":
 			"shlSketchLayers",
 			"shlSmartOutline",
 			"shlCutTerrain",
-			"shlMakeSlidingLidBox"
+			"shlMakeSlidingLidBox",
+			"shlCutPlan"
 			]
 
 	xml_command_list = make_xml_command_list(command_list,commands_path)
