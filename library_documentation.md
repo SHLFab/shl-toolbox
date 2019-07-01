@@ -235,6 +235,8 @@ check_planar_curves_collision(crvs)
 Returns True if any two curves overlap, curves must be planar
 
 
+
+=======
 ---
 ### trim_boundary
 ### MUST REVIEW
@@ -269,6 +271,36 @@ add_layer(name,color)
 ```
 add a colored layer by name
 
+
+## rhino_util
+Rhino object utility functions (e.g. converting between RhinoCommon types).
+
+#### extrusion_to_brep(extrusion):
+  convert a single RhinoCommon extrusion geometry to a RhinCommon brep geometry
+
+#### docobj_to_guid(doc_input):
+  convert list of doc objects to guids. handles single objects as well.
+
+#### add_curve_to_layer(curve,layer_index):
+  add curve to document on layer by layer index
+
+#### add_brep_to_layer(brep,layer_index):
+  add brep to document on layer by layer index
+
+#### def add_curves_to_layer(curves_list,layer_index):
+  add list of curves to document on layer by layer index
+
+#### def polycurve_to_polyline(g_polycurve,absolute_tolerance,angle_tolerance):
+#### MUST REVIEW
+  	convert a RhinoCommon polycurve to a RhinoCommon polyline
+
+#### polylinecurve_to_polycurve(g_polylinecurve):
+  convert a RhinoCommon polylinecurve to a RhinoCommon polycurve
+
+-------------------------------------
+## util
+General non-geometric utilities
+=======
 **Parameters:**
 ```
 name (str): layer name

@@ -25,10 +25,10 @@ def make_xml_command_list(command_list,dir):
 def make_plugin_info(version_num):
 	"""generate xml for plugin info"""
 	name = "SHL Toolbar"
-	build_directory = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\"
+	build_directory = REPO_PATH + "build\\"
 	author = "SHL Architects - Sean Lamb (Developer)"
-	email = "sel@shl.dk"
-	phone = "+45 78 74 48 12"
+	email = "aam@shl.dk"
+	phone = " "
 	address = "Njalsgade 17A/Pakhus 2/2300 Copenhagen S/Denmark"
 	country = "Denmark"
 	website = "www.shl.dk"
@@ -51,6 +51,7 @@ def make_plugin_info(version_num):
 							)
 	return plugin
 
+
 def archive_from_files(name,home_dir,files,extension='zip'):
 	filename = name + "." + extension
 	path = os.path.join(home_dir,filename)
@@ -65,10 +66,12 @@ def make_rhi(rhp_path,rui_path,directory_out):
 
 if __name__=="__main__":
 	
-	version_num = 0.2
+	global REPO_PATH
+	REPO_PATH = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\'
+	version_num = 0.3
 	rhc_filename = "SHL_Toolbar.rhc"
-#	commands_path = 'O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\command_staging\\'
-	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\ws_tools_repo\\shl-toolbox\\'
+	commands_path = REPO_PATH + 'command_staging\\' #path to the directory with the commands
+	#List all command names by their filenames here. The command name will be the same as the filename.
 	command_list = [
 			"shlBridge",
 			"shlSliceVolumes",
@@ -81,7 +84,9 @@ if __name__=="__main__":
 			"shlCollapseBox",
 			"shlSketchLayers",
 			"shlSmartOutline",
-			"shlCutTerrain"
+			"shlCutTerrain",
+			"shlMakeSlidingLidBox",
+			"shlCutPlan"
 			]
 	
 	xml_command_list = make_xml_command_list(command_list,commands_path)
@@ -93,11 +98,15 @@ if __name__=="__main__":
 	xdoc = xm.XDocument(xm.XDeclaration("1.0","utf-16","no"),xm.XElement(
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
 	
+	#location of rhinoscriptcompiler.
+	path_to_exe = REPO_PATH + 'buildhelpers\\RhinoScriptCompiler.exe' 
 	
-	path_to_exe = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\RhinoScriptCompiler.exe"
-	path_to_file = "O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\" + rhc_filename
+	#Place where the Rhinoscript Compiler Project file SHL_Toolbar.rhc is located.
+	#This is an XML file built by the batchscript automatically and read by the RhinoScriptCompiler
+	path_to_file = REPO_PATH + 'build\\' + rhc_filename 
 	
-	#debug... shouldn't have to be using ToString here, but as a temporary fix this works.
+	#Write the xml to a .rhc file.
+	#Dev note: using .ToString() here is poor form, .Save is preferred... but not working for some reason...
 	#xdoc.Save("test1.rhc",xm.SaveOptions.DisableFormatting)
 	str_doc = xdoc.ToString()
 	file = open(path_to_file,'w')
@@ -105,22 +114,25 @@ if __name__=="__main__":
 	file.write(str_doc)
 	file.close()
 	print str_doc
+
+	#Make the rhp file by running RhinoScriptCompiler.exe with SHL_Toolbar.rhc as an argument.
+	subprocess.call([path_to_exe,path_to_file])
+
+
+	#Get paths to the location of the rhp, rui, and the build directory where the .rhi file will be placed.
+	rhp_path = os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rhp')
+	rui_path = os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rui')
+	rhi_build_path = os.path.normpath(REPO_PATH + 'build\\')
 	
-	#make rhp file
-#	subprocess.call([path_to_exe,path_to_file])
-	
-	
-	#get paths to relevant files
-	rhp_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhp")
-	rui_path = os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rui")
-	rhi_build_path = os.path.normpath("O:\\SHL\\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build")
-	
-	try: 
-		os.remove(os.path.normpath("O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\build\\SHL_Toolbar.rhi"))
-		print "removed"
+	#Remove any existing .rhi in the build directory.
+	try:
+		os.remove(os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rhi'))
+		print "removed existing rhi"
 	except:
 		pass
 	
+	#zip together the rhi and rui files and give the archive the .rhi extension.
+	#.rhi files are just zipped files with the extension .zip renamed to .rhi
 	archive_from_files("SHL_Toolbar",rhi_build_path,[rhp_path,rui_path],'rhi')
 #	print rhp_path
 #	print rui_path
