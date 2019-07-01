@@ -25,7 +25,7 @@ def make_xml_command_list(command_list,dir):
 def make_plugin_info(version_num):
 	"""generate xml for plugin info"""
 	name = "SHL Toolbar"
-	build_directory = "C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\"
+	build_directory = REPO_PATH + "build\\"
 	author = "SHL Architects - Sean Lamb (Developer)"
 	email = "aam@shl.dk"
 	phone = " "
@@ -66,9 +66,11 @@ def make_rhi(rhp_path,rui_path,directory_out):
 
 if __name__=="__main__":
 	
+	global REPO_PATH
+	REPO_PATH = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\'
 	version_num = 0.3
 	rhc_filename = "SHL_Toolbar.rhc"
-	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\command_staging\\' #path to the directory with the commands
+	commands_path = REPO_PATH + 'command_staging\\' #path to the directory with the commands
 	#List all command names by their filenames here. The command name will be the same as the filename.
 	command_list = [
 			"shlBridge",
@@ -97,11 +99,11 @@ if __name__=="__main__":
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
 	
 	#location of rhinoscriptcompiler.
-	path_to_exe = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\buildhelpers\\RhinoScriptCompiler.exe' 
+	path_to_exe = REPO_PATH + 'buildhelpers\\RhinoScriptCompiler.exe' 
 	
 	#Place where the Rhinoscript Compiler Project file SHL_Toolbar.rhc is located.
 	#This is an XML file built by the batchscript automatically and read by the RhinoScriptCompiler
-	path_to_file = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\\build\\' + rhc_filename 
+	path_to_file = REPO_PATH + 'build\\' + rhc_filename 
 	
 	#Write the xml to a .rhc file.
 	#Dev note: using .ToString() here is poor form, .Save is preferred... but not working for some reason...
@@ -118,13 +120,13 @@ if __name__=="__main__":
 
 
 	#Get paths to the location of the rhp, rui, and the build directory where the .rhi file will be placed.
-	rhp_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhp')
-	rui_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rui')
-	rhi_build_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\')
+	rhp_path = os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rhp')
+	rui_path = os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rui')
+	rhi_build_path = os.path.normpath(REPO_PATH + 'build\\')
 	
 	#Remove any existing .rhi in the build directory.
 	try:
-		os.remove(os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhi'))
+		os.remove(os.path.normpath(REPO_PATH + 'build\\SHL_Toolbar.rhi'))
 		print "removed existing rhi"
 	except:
 		pass
