@@ -27,15 +27,15 @@ def make_plugin_info(version_num):
 	name = "SHL Toolbar"
 	build_directory = "C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\"
 	author = "SHL Architects - Sean Lamb (Developer)"
-	email = "sel@shl.dk"
-	phone = "+45 78 74 48 12"
+	email = "aam@shl.dk"
+	phone = " "
 	address = "Njalsgade 17A/Pakhus 2/2300 Copenhagen S/Denmark"
 	country = "Denmark"
 	website = "www.shl.dk"
 	update_url = ""
 	copyright = "Loading SHL Fabrication Toolbox v" + str(version_num)
 	rc_directory = "C:\\Program Files\\Rhino 6\\System\\RhinoCommon.dll"
-
+	
 	plugin = xm.XElement(xm.XName.Get("Plugin"),
 							xm.XElement(xm.XName.Get("PluginName"),name),
 							xm.XElement(xm.XName.Get("PluginFolder"),build_directory),
@@ -51,6 +51,7 @@ def make_plugin_info(version_num):
 							)
 	return plugin
 
+
 def archive_from_files(name,home_dir,files,extension='zip'):
 	filename = name + "." + extension
 	path = os.path.join(home_dir,filename)
@@ -64,11 +65,11 @@ def make_rhi(rhp_path,rui_path,directory_out):
 	pass
 
 if __name__=="__main__":
-
-	version_num = 1.3
+	
+	version_num = 0.3
 	rhc_filename = "SHL_Toolbar.rhc"
-#	commands_path = 'O:\\SHL\ModelshopCopenhagen\\05_scripting\\FabToolbox\\compiler_projects\\command_staging\\'
-	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\command_staging\\'
+	commands_path = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\command_staging\\' #path to the directory with the commands
+	#List all command names by their filenames here. The command name will be the same as the filename.
 	command_list = [
 			"shlBridge",
 			"shlSliceVolumes",
@@ -85,21 +86,25 @@ if __name__=="__main__":
 			"shlMakeSlidingLidBox",
 			"shlCutPlan"
 			]
-
+	
 	xml_command_list = make_xml_command_list(command_list,commands_path)
 	plugin = make_plugin_info(version_num)
-
+	
 	commands = xm.XElement(xm.XName.Get("Commands"),xml_command_list)
 	menu = xm.XElement("Menu")
-
+	
 	xdoc = xm.XDocument(xm.XDeclaration("1.0","utf-16","no"),xm.XElement(
 				xm.XName.Get("RhinoScriptCompilerProject"),plugin,commands,menu))
-
-
-	path_to_exe = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\buildhelpers\\RhinoScriptCompiler.exe'
-	path_to_file = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\\build\\' + rhc_filename
-
-	#debug... shouldn't have to be using ToString here, but as a temporary fix this works.
+	
+	#location of rhinoscriptcompiler.
+	path_to_exe = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\buildhelpers\\RhinoScriptCompiler.exe' 
+	
+	#Place where the Rhinoscript Compiler Project file SHL_Toolbar.rhc is located.
+	#This is an XML file built by the batchscript automatically and read by the RhinoScriptCompiler
+	path_to_file = r'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\\build\\' + rhc_filename 
+	
+	#Write the xml to a .rhc file.
+	#Dev note: using .ToString() here is poor form, .Save is preferred... but not working for some reason...
 	#xdoc.Save("test1.rhc",xm.SaveOptions.DisableFormatting)
 	str_doc = xdoc.ToString()
 	file = open(path_to_file,'w')
@@ -108,21 +113,24 @@ if __name__=="__main__":
 	file.close()
 	print str_doc
 
-	#make rhp file
+	#Make the rhp file by running RhinoScriptCompiler.exe with SHL_Toolbar.rhc as an argument.
 	subprocess.call([path_to_exe,path_to_file])
 
 
-	#get paths to relevant files
+	#Get paths to the location of the rhp, rui, and the build directory where the .rhi file will be placed.
 	rhp_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhp')
 	rui_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rui')
 	rhi_build_path = os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\')
-
+	
+	#Remove any existing .rhi in the build directory.
 	try:
 		os.remove(os.path.normpath('C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\build\\SHL_Toolbar.rhi'))
 		print "removed existing rhi"
 	except:
 		pass
-
+	
+	#zip together the rhi and rui files and give the archive the .rhi extension.
+	#.rhi files are just zipped files with the extension .zip renamed to .rhi
 	archive_from_files("SHL_Toolbar",rhi_build_path,[rhp_path,rui_path],'rhi')
 #	print rhp_path
 #	print rui_path

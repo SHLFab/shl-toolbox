@@ -16,6 +16,7 @@ reload(wge)
 
 
 def set_globals():
+	global SHORT_GUIDE, LONG_GUIDE
 	global D_TOL, A_TOL
 	D_TOL = doc.ActiveDoc.ModelAbsoluteTolerance
 	A_TOL = doc.ActiveDoc.ModelAngleToleranceDegrees
@@ -567,6 +568,6 @@ if __name__ == "__main__":
 		if result == 0:
 			print "ERROR: topography slicing error. Try rebuilding the input surface with more control points and trying again."
 		rs.EnableRedraw(True)
-		rs.DeleteObject(SHORT_GUIDE)
-		rs.DeleteObject(LONG_GUIDE)
+		rs.UnlockObjects([SHORT_GUIDE,LONG_GUIDE])
+		rs.DeleteObjects([SHORT_GUIDE,LONG_GUIDE])
 		rs.Redraw()

@@ -21,7 +21,7 @@ def setGlobals():
 	global T_OBOX,J_LEN,LCUT_GAP,TICK_DIST
 	global SELECT_GUIDS
 	
-	T_OBOX = 2 #outer box thickness (card)
+	T_OBOX = 3 #outer box thickness (card)
 	J_LEN = 20 #joint length
 	LCUT_GAP = 5 #gap between lasercut curves
 	

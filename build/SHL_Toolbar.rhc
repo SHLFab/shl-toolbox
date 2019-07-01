@@ -4,13 +4,13 @@
     <PluginName>SHL Toolbar</PluginName>
     <PluginFolder>C:\Users\lambs\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl-toolbox\build\</PluginFolder>
     <AuthorName>SHL Architects - Sean Lamb (Developer)</AuthorName>
-    <AuthorEmail>sel@shl.dk</AuthorEmail>
-    <AuthorPhone>+45 78 74 48 12</AuthorPhone>
+    <AuthorEmail>aam@shl.dk</AuthorEmail>
+    <AuthorPhone> </AuthorPhone>
     <AuthorAddress>Njalsgade 17A/Pakhus 2/2300 Copenhagen S/Denmark</AuthorAddress>
     <AuthorCountry>Denmark</AuthorCountry>
     <AuthorWebsite>www.shl.dk</AuthorWebsite>
     <UpdateURL />
-    <CopyrightMessage>Loading SHL Fabrication Toolbox v1.3</CopyrightMessage>
+    <CopyrightMessage>Loading SHL Fabrication Toolbox v0.3</CopyrightMessage>
     <RhinoCommonOverride>C:\Program Files\Rhino 6\System\RhinoCommon.dll</RhinoCommonOverride>
   </Plugin>
   <Commands>
