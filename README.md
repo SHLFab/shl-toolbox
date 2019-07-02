@@ -22,7 +22,7 @@ The goal of compilation is:
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
 #### 1. Export the .rui:
-The .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm) for more information. Ensure to update the version number before export ```right-click the toolbar > Properties > Group Name / Tab Text ```  
+The .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm) for more information. Ensure to update the version number before export by right-clicking the toolbar and editing > Properties > Group Name / Tab Text  
   
 ![Update Version](resources/readme_images/update_version.PNG "Update Version Number")
 
