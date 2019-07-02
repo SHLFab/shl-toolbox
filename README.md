@@ -29,9 +29,10 @@ The .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](
 ![Update Version](resources/readme_images/update_version.PNG "Update Version Number")
 
 #### 2. Stage the commands before compiling:
-Commands developed in ```/commands``` should reference the in-development library in ```/lib``` with imports formatted like so:  
+Commands developed in ```/commands``` should reference the in-development library in ```/lib``` with imports formatted like so: 
+  
 ```import shl-toolbox.lib.layers```  
-
+  
 However, when the plugin is compiled, the referenced library will exist in the user's scripts folder, ```USER\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl_toolbox_lib.``` Therefore, when compiling the project, you must copy the commands to be included in the plugin to ```\command_staging``` and change the imports like so:  
 
 **BEFORE:** ```import shl-toolbox.lib.layers```  
