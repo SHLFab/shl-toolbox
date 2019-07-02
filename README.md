@@ -18,9 +18,8 @@ If you do not have a scripts directory, add one yourself to the 6.0 directory.
 
 ### Compiling
 
-The goal of compilation is a directory SHL_TOOLBAR containing everything the enduser needs:
+The goal of compilation is:
 - ```SHL_Toolbar_Installer_Part_1.rhi```: Installs the commands and toolbar
-- ```SHL_Toolbar_Installer_Part_2.ps1```: Moves the required modules to the user's scripts directory ###NOTE LOCATION OF THIS###
 - ```shl_toolbox_lib```: modules to be moved into the user's scripts directory
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
@@ -47,40 +46,29 @@ There are two ways to compile, manual compilations is described in case there ar
 2. _Edit the .rhc and output a .rhp file:_    
 a) A Rhino Compiler Project (.rhc) is read by ```buildhelpers\RhinoScriptCompiler.exe``` to generate the .rhp file. In the repository, in ```/build``` you should find the most recent .rhc file, ```SHL_Toolbar.rhc```. Open ```RhinoscriptCompiler.exe``` and choose "Open an existing project." Here you can edit the existing .rhc by adding or removing commands, changing plugin setting, etc.  
 b) Ensure to edit the plugin settings to update the version number.  
-c) Build the project and chose "just Plug-In". SHL_Toolbar.rhp should be built in the /build directory  
-3. _Compress the .rhp and .rui files_ into a .zip archive SHL_Toolbar.zip and change the file extension to SHL_Toolbar.rhi to make the installer.
+c) Build the project and chose "just Plug-In". ```SHL_Toolbar.rhp``` should be built in the ```/build```  
+3. _Compress the .rhp and .rui files_ into a .zip archive ```SHL_Toolbar.zip``` and change the file extension to ```SHL_Toolbar.rhi``` to make the installer.
 
 **Automated Method:**  
-The script ```build_shl_toolbar_installer.py``` can be run from the Python editor in Rhino 6. This script contains variables for version number and filenames in ```\command_staging``` to target for building commands.  
+```build_shl_toolbar_installer.py``` can be run from the Python editor in Rhino 6. This script contains variables for version number and filenames in ```\command_staging``` to target for building commands.  
 Place the most updated .rui in \build and run the code to automatically build the .rhc file and the .rhi file.  Note that command names in Rhino will automatically be generated from the python filenames in ```\command_staging```. So, double check your .rui to make sure the command macro assigned to the toolbar button is correct!
 
+#### 4. Make shl_toolbox_lib  
+Simply move the files in \lib to a directory called \shl_toolbox_lib, to be placed in the user's scripts directory. This can be automated if desired (e.g. with powershell) 
 
-
-## Releasing
+## Releasing (SHL Internal)
 
 The goal of releasing is a directory SHL_TOOLBAR containing everything the enduser needs:
 - ```SHL_Toolbar_Installer_Part_1.rhi```: Installs the commands and toolbar
 - ```SHL_Toolbar_Installer_Part_2.ps1```: Moves the required modules to the user's scripts directory ###NOTE LOCATION OF THIS###
 - ```_INSTALLATION_.txt```: Installation instructions
 - ```SHL_Toolbox_Guide.pdf```: Full documentation
+- ```shl_toolbox_lib```: modules to be moved into the user's scripts directory
 
 SHL-SPECIFIC STUFF:
 Distributing the library:
 The library is not compiled, so it must be copied into the user's scripts folder in a directory named shl_toolbox_lib. This is typically done with a powershell script or manually.
 
-## Built With
-
-* [Dropwizard](http://www.dropwizard.io/1.0.2/docs/) - The web framework used
-* [Maven](https://maven.apache.org/) - Dependency Management
-* [ROME](https://rometools.github.io/rome/) - Used to generate RSS Feeds
-
-## Contributing
-
-Please read [CONTRIBUTING.md](https://gist.github.com/PurpleBooth/b24679402957c63ec426) for details on our code of conduct, and the process for submitting pull requests to us.
-
-## Versioning
-
-We use [SemVer](http://semver.org/) for versioning. For the versions available, see the [tags on this repository](https://github.com/your/project/tags). 
 
 ## Authors
 
@@ -92,5 +80,3 @@ https://github.com/SHLFab
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
-
-
