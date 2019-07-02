@@ -24,16 +24,22 @@ The goal of compilation is a directory SHL_TOOLBAR containing everything the end
 - ```shl_toolbox_lib```: modules to be moved into the user's scripts directory
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
-There are two ways to compile, manual compilations is described in case there are bugs in the process or the user is unclear on the automated method. In both methods the .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm) for more information. 
+#### 1. Export the .rui:
+The .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm) for more information. Ensure to update the version number before export ```right-click the toolbar > Properties > Group Name / Tab Text ```
+![Update Version](resources/readme/update_version_num.png "Update Version Number")
 
-#### Staging the commands before compiling:
+#### 2. Stage the commands before compiling:
 Commands developed in the /commands directory should reference the in-development library in /lib with imports formatted like so:
-import shl-toolbox.lib.layers
-However, when the plugin is compiled, the referenced library will exist in the user's scripts folder, USER\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl_toolbox_lib. Therefore, when compiling the project, you must copy the commands to be included in the plugin to \command_staging and change the imports like so:
-BEFORE: import shl-toolbox.lib.layers
-AFTER: import shl_toolbox_lib.layers
+import shl-toolbox.lib.layers  
+However, when the plugin is compiled, the referenced library will exist in the user's scripts folder, USER\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl_toolbox_lib. Therefore, when compiling the project, you must copy the commands to be included in the plugin to \command_staging and change the imports like so:  
 
-#### Building the Plugin Installer:
+BEFORE: ```import shl-toolbox.lib.layers```  
+AFTER: ```import shl_toolbox_lib.layers```  
+
+#### 3. Build the Plugin Installer:
+
+There are two ways to compile, manual compilations is described in case there are bugs in the process or the user is unclear on the automated method.  
+
 _Manual Method:_
 1. Make the .rui: Create Toolbar buttons as necessary and save out the toolbar. The macros for each command should have the same name as the .py files representing the individual commands. When exporting the toolbar, be sure to edit the toolbar name to update the version number.
 2. Edit the .rhc and output a .rhp file:
