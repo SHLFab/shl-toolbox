@@ -41,16 +41,17 @@ However, when the plugin is compiled, the referenced library will exist in the u
 
 There are two ways to compile, manual compilations is described in case there are bugs in the process or the user is unclear on the automated method.  
 
-_Manual Method:_
-1. Make the .rui: Create Toolbar buttons as necessary and save out the toolbar. The macros for each command should have the same name as the .py files representing the individual commands. When exporting the toolbar, be sure to edit the toolbar name to update the version number.
-2. Edit the .rhc and output a .rhp file:
-a) A Rhino Compiler Project (.rhc) is read by buildhelpers\RhinoScriptCompiler.exe to generate the .rhp file. In the repository, in directory /build you should find the most recent .rhc file, SHL_Toolbar.rhc. Open RhinoscriptCompiler.exe and "open an existing project." Here you can edit the existing .rhc by adding or removing commands, changing plugin setting, etc.
-b) Ensure to edit the plugin settings to update the version number.
-c) Build the project and chose "just Plug-In". SHL_Toolbar.rhp should be built in the /build directory
-3. Compress the .rhp and .rui files into a .zip archive SHL_Toolbar.zip and change the file extension to SHL_Toolbar.rhi to make the installer.
+**Manual Method:**
+1. _Make the .rui:_  
+  Create Toolbar buttons as necessary and save out the toolbar. The macros for each command should have the same name as the .py files representing the individual commands. When exporting the toolbar, be sure to edit the toolbar name to update the version number.
+2. _Edit the .rhc and output a .rhp file:_  
+  a) A Rhino Compiler Project (.rhc) is read by ```buildhelpers\RhinoScriptCompiler.exe``` to generate the .rhp file. In the repository, in ```/build``` you should find the most recent .rhc file, ```SHL_Toolbar.rhc```. Open ```RhinoscriptCompiler.exe``` and choose "Open an existing project." Here you can edit the existing .rhc by adding or removing commands, changing plugin setting, etc.
+  b) Ensure to edit the plugin settings to update the version number.
+  c) Build the project and chose "just Plug-In". SHL_Toolbar.rhp should be built in the /build directory
+3. _Compress the .rhp and .rui files_ into a .zip archive SHL_Toolbar.zip and change the file extension to SHL_Toolbar.rhi to make the installer.
 
-_Automated Method:_
-The script build_shl_toolbar_installer.py can be run from the Python editor in Rhino 6. This script contains variables for version number and filenames in \command_staging to target for building commands. Place the most updated .rui in \build and run the code to automatically build the .rhc file and the .rhi file.  Note that command names in Rhino will automatically be generated from the python filenames in \command_staging. Therefore double check your .rui to make sure the command macro assigned to the toolbar button is correct!
+**Automated Method:**
+The script ```build_shl_toolbar_installer.py``` can be run from the Python editor in Rhino 6. This script contains variables for version number and filenames in ```\command_staging``` to target for building commands. Place the most updated .rui in \build and run the code to automatically build the .rhc file and the .rhi file.  Note that command names in Rhino will automatically be generated from the python filenames in ```\command_staging```. So, double check your .rui to make sure the command macro assigned to the toolbar button is correct!
 
 
 
