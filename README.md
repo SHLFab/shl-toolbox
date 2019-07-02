@@ -19,6 +19,7 @@ If you do not have a scripts directory, add one yourself to the 6.0 directory.
 The goal of compilation is:
 - ```SHL_Toolbar_Installer_Part_1.rhi```: Installs the commands and toolbar
 - ```shl_toolbox_lib```: modules to be moved into the user's scripts directory  
+  
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
 #### 1. Export the .rui:
@@ -53,13 +54,13 @@ c) Build the project and chose "just Plug-In". ```SHL_Toolbar.rhp``` should be b
 ![Automated Method](resources/readme_images/build_process-02.png "Automated Method")  
 **Automated Method:**  
 ```build_shl_toolbar_installer.py``` can be run from the Python editor in Rhino 6. This script contains variables for version number and filenames in ```\command_staging``` to target for building commands.  
-Place the most updated .rui in \build and run the code to automatically build the .rhc file and the .rhi file.  Note that command names in Rhino will automatically be generated from the python filenames in ```\command_staging```. So, double check your .rui to make sure the command macro assigned to the toolbar button is correct!
+Place the most updated .rui in ```\build``` and run the code to automatically build the .rhc file and the .rhi file.  Note that command names in Rhino will automatically be generated from the python filenames in ```\command_staging```. So, double check your .rui to make sure the command macro assigned to the toolbar button is correct!
 
 #### 4. Make shl_toolbox_lib  
-Simply move the files in \lib to a directory called \shl_toolbox_lib, to be placed in the user's scripts directory. This can be automated if desired (e.g. with powershell) 
+Simply move the files in ```\lib``` to a directory called ```\shl_toolbox_lib```, to be placed in the user's scripts directory. This can be automated if desired (e.g. with powershell) 
 
 
-## Key Persons
+## Contacts
 
 * **Sean Lamb** - *Developer v0.1-0.3* - [sean-nl](https://github.com/sean-nl)
 * **Ali Mirakbari** - *Main contact* - [alimirakbari](https://github.com/alimirakbari)
