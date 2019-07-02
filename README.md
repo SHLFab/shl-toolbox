@@ -1,20 +1,19 @@
 # SHL Toolbox
 
-_text - part of shl etc etc etc_
-**SHL Toolbox** is a set of workflow-enhancing tools for Rhino, with a particular focus on fabrication file preparation. Developed at [Schmidt Hammer Lassen Architects](https://www.shl.dk/, The toolbox is deployed as an IronPython plugin for Rhino and makes use of the [rhinoscriptsyntax](https://developer.rhino3d.com/api/RhinoScriptSyntax/) and [RhinoCommon](https://developer.rhino3d.com/guides/rhinocommon/) libraries.
+**SHL Toolbox** is a set of workflow-enhancing tools for Rhino, with a particular focus on fabrication file preparation. Developed at [Schmidt Hammer Lassen Architects](https://www.shl.dk/), The toolbox is deployed as an IronPython plugin for Rhino and makes use of the [rhinoscriptsyntax](https://developer.rhino3d.com/api/RhinoScriptSyntax/) and [RhinoCommon](https://developer.rhino3d.com/guides/rhinocommon/) libraries.
 
 
 ## Getting Started
 
 _Note: These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system._
 
-- Clone the shl toolbox repo to your local scripts folder. This is usually located at:
+- Clone the ```shl-toolbox``` repo to your local scripts folder. This is usually located at:
 ```
 C:\Users\[YOUR_USER_NAME]\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts
 ```
 If you do not have a scripts directory, add one yourself to the 6.0 directory.
 
-- You can now edit the commands in shl-toolbox/commands in the editor of your choice and run them directly in the Rhino Python script editor.
+- You can now edit the commands in ```shl-toolbox/commands``` in the editor of your choice and test them by running them directly in the Rhino Python script editor.
 
 
 ### Compiling
@@ -25,16 +24,16 @@ The goal of compilation is a directory SHL_TOOLBAR containing everything the end
 - ```shl_toolbox_lib```: modules to be moved into the user's scripts directory
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
-There are two ways to compile, manual compilations is described in case there are bugs in the process or the user is unclear on the automated method. In both methods the .rui is edited and saved within Rhino. See here for more information: http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm
+There are two ways to compile, manual compilations is described in case there are bugs in the process or the user is unclear on the automated method. In both methods the .rui is edited and saved within Rhino. See McNeel's [toolbar documentation](http://docs.mcneel.com/rhino/5/help/en-us/toolbarsandmenus/customize_toolbars.htm) for more information. 
 
-####Staging the commands before compiling:
+#### Staging the commands before compiling:
 Commands developed in the /commands directory should reference the in-development library in /lib with imports formatted like so:
 import shl-toolbox.lib.layers
 However, when the plugin is compiled, the referenced library will exist in the user's scripts folder, USER\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts\shl_toolbox_lib. Therefore, when compiling the project, you must copy the commands to be included in the plugin to \command_staging and change the imports like so:
 BEFORE: import shl-toolbox.lib.layers
 AFTER: import shl_toolbox_lib.layers
 
-####Building the Plugin Installer:
+#### Building the Plugin Installer:
 _Manual Method:_
 1. Make the .rui: Create Toolbar buttons as necessary and save out the toolbar. The macros for each command should have the same name as the .py files representing the individual commands. When exporting the toolbar, be sure to edit the toolbar name to update the version number.
 2. Edit the .rhc and output a .rhp file:
