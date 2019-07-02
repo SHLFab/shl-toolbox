@@ -16,7 +16,7 @@ If you do not have a scripts directory, add one yourself to the 6.0 directory.
 - You can now edit the commands in ```shl-toolbox/commands``` in the editor of your choice and test them by running them directly in the Rhino Python script editor.
 
 
-### Compiling
+## Compiling
 
 The goal of compilation is:
 - ```SHL_Toolbar_Installer_Part_1.rhi```: Installs the commands and toolbar
