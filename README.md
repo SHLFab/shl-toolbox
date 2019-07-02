@@ -18,7 +18,7 @@ If you do not have a scripts directory, add one yourself to the 6.0 directory.
 
 The goal of compilation is:
 - ```SHL_Toolbar_Installer_Part_1.rhi```: Installs the commands and toolbar
-- ```shl_toolbox_lib```: modules to be moved into the user's scripts directory
+- ```shl_toolbox_lib```: modules to be moved into the user's scripts directory  
 An RHI file is a compressed archive of a Rhino Python Plugin (.rhp) and a Rhino Toolbar (.rui) file. 
 
 #### 1. Export the .rui:
@@ -68,4 +68,4 @@ https://github.com/SHLFab
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details
+This project is licensed under the GNU Affero General Public License v3.0 - see the [LICENSE.md](LICENSE.md) file for details
