@@ -66,8 +66,10 @@ def make_rhi(rhp_path,rui_path,directory_out):
 
 if __name__=="__main__":
 	
+	#set to local repo location
 	global REPO_PATH
 	REPO_PATH = 'C:\\Users\\lambs\\AppData\\Roaming\\McNeel\\Rhinoceros\\6.0\\scripts\\shl-toolbox\\'
+	
 	version_num = 0.3
 	rhc_filename = "SHL_Toolbar.rhc"
 	commands_path = REPO_PATH + 'command_staging\\' #path to the directory with the commands
