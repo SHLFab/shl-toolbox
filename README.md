@@ -5,8 +5,6 @@
 
 ## Getting Started
 
-_Note: These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system._
-
 - Clone the ```shl-toolbox``` repo to your local scripts folder. This is usually located at:
 ```
 C:\Users\[YOUR_USER_NAME]\AppData\Roaming\McNeel\Rhinoceros\6.0\scripts
