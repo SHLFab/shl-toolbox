@@ -13,7 +13,8 @@ If you do not have a scripts directory, add one yourself to the 6.0 directory.
 
 - You can now edit the commands in ```shl-toolbox/commands``` in the editor of your choice and test them by running them directly in the Rhino Python script editor.
 
-
+***Notes on local paths:  
+- Scripts shlMakeBox.py and shlMakeSlidingLidBox.py contain a local path to a logo hatch. Change this path to a desired solid-hatch logo to engrave on the box. See example files. ***
 ## Compiling
 
 The goal of compilation is:
