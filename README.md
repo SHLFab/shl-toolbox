@@ -1,5 +1,5 @@
 # SHL Toolbox  
-![Banner](resources/readme_images/banner_image.png "SHL Toolbox")  
+![Banner](resources/readme_images/banner_image2.png "SHL Toolbox")  
 
 **SHL Toolbox** is a set of workflow-enhancing tools for Rhino, with a particular focus on fabrication file preparation. Developed at [Schmidt Hammer Lassen Architects](https://www.shl.dk/), The toolbox is deployed as an IronPython plugin for Rhino and uses the [rhinoscriptsyntax](https://developer.rhino3d.com/api/RhinoScriptSyntax/) and [RhinoCommon](https://developer.rhino3d.com/guides/rhinocommon/) libraries.
 
